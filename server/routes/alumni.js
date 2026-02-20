@@ -36,11 +36,20 @@ router.post("/register", async (req, res) => {
       password,
       profession,
       company,
+      previousCompany,
+      industry,
       totalExperience,
       yearsInCurrentCompany,
-      previousCompany,
+      linkedin,
+      skills, // comma separated string or array
+      graduationYear,
+      degree,
+      college,
       phone,
+      location,
       description,
+      photoUrl,
+      meetingMode,
     } = req.body;
 
     if (
@@ -54,8 +63,7 @@ router.post("/register", async (req, res) => {
       !phone
     ) {
       return res.status(400).json({
-        message:
-          "Name, email, password, profession, company, totalExperience, yearsInCurrentCompany and phone are required",
+        message: "Required fields missing. Please fill all mandatory fields.",
       });
     }
 
@@ -63,7 +71,7 @@ router.post("/register", async (req, res) => {
     const yearsCurrent = Number(yearsInCurrentCompany);
     if (Number.isNaN(totalExp) || Number.isNaN(yearsCurrent)) {
       return res.status(400).json({
-        message: "totalExperience and yearsInCurrentCompany must be numbers",
+        message: "Experience must be a number",
       });
     }
 
@@ -74,17 +82,38 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Parse skills
+    let skillsArray = [];
+    if (Array.isArray(skills)) {
+      skillsArray = skills;
+    } else if (typeof skills === "string") {
+      skillsArray = skills.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+
     const alumni = await Alumni.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
+
       profession: profession.trim(),
       company: company.trim(),
+      previousCompany: previousCompany ? String(previousCompany).trim() : undefined,
+      industry: industry ? String(industry).trim() : undefined,
       totalExperience: totalExp,
       yearsInCurrentCompany: yearsCurrent,
-      previousCompany: previousCompany ? String(previousCompany).trim() : undefined,
+      linkedin: linkedin ? String(linkedin).trim() : undefined,
+      skills: skillsArray,
+
+      graduationYear: graduationYear ? Number(graduationYear) : undefined,
+      degree: degree ? String(degree).trim() : undefined,
+      college: college ? String(college).trim() : undefined,
+
       phone: phone.trim(),
+      location: location ? String(location).trim() : undefined,
       description: description ? String(description).trim() : undefined,
+      photoUrl: photoUrl ? String(photoUrl).trim() : undefined,
+      meetingMode: meetingMode || "Online",
+
       role: "alumni",
     });
 

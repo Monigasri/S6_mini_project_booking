@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { api, User, Slot } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import AlumniCard from "@/components/AlumniCard";
-import { Search, Calendar, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Calendar, CheckCircle2, ArrowLeft } from "lucide-react";
 
 export default function StudentHome() {
+  const navigate = useNavigate();
   const [alumni, setAlumni] = useState<User[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,7 @@ export default function StudentHome() {
     if (res.ok) {
       const upcoming = res.appointments.filter(
         (a: Slot) =>
-          a.status === "booked" &&
+          (a.status === "booked" || a.status === "approved") &&
           new Date(`${a.date}T${a.time}`) > new Date()
       );
 
@@ -45,7 +47,7 @@ export default function StudentHome() {
 
       // Filter booked slots (alumniName is now included in API response)
       const booked = res.appointments.filter(
-        (a: Slot) => a.status === "booked" && new Date(`${a.date}T${a.time}`) > new Date()
+        (a: Slot) => (a.status === "booked" || a.status === "approved") && new Date(`${a.date}T${a.time}`) > new Date()
       );
 
       setBookedSlots(booked);
@@ -74,6 +76,13 @@ export default function StudentHome() {
       <Navbar />
 
       <main className="mx-auto max-w-6xl px-4 py-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Find Alumni Mentors</h1>
@@ -82,15 +91,33 @@ export default function StudentHome() {
           </p>
         </div>
 
+        {/* REMINDERS / BALANCE */}
+        {bookedSlots.filter(s => s.status === "approved").length > 0 && (
+          <div className="mb-8 flex items-center justify-between rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 p-6 shadow-lg text-white">
+            <div>
+               <h2 className="text-xl font-bold flex items-center gap-2">
+                <CheckCircle2 className="h-6 w-6" /> 
+                Upcoming Sessions
+              </h2>
+              <p className="opacity-90 mt-1">
+                You have <strong>{bookedSlots.filter(s => s.status === "approved").length}</strong> confirmed appointment(s) coming up.
+              </p>
+            </div>
+            <div className="hidden sm:block text-4xl font-bold opacity-20">
+              {bookedSlots.filter(s => s.status === "approved").length}
+            </div>
+          </div>
+        )}
+
         {/* Booked Slots Section */}
         {bookedSlots.length > 0 && (
           <div className="mb-8 rounded-xl border border-green-200 bg-green-50/50 p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
-              <h2 className="text-xl font-semibold text-green-900">Booked Slots</h2>
+              <h2 className="text-xl font-semibold text-green-900">Your Bookings</h2>
             </div>
             <p className="mb-4 text-sm text-muted-foreground">
-              Your successfully booked appointments
+              Your booked and confirmed appointments
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {bookedSlots.map((slot) => (
@@ -109,9 +136,15 @@ export default function StudentHome() {
                       With {slot.alumniName || "Alumni"}
                     </div>
                     <div className="mt-2">
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                        Booked
-                      </span>
+                      {slot.status === "approved" ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                          Accepted
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                          Waiting
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -145,7 +178,7 @@ export default function StudentHome() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {alumni.map((a) => (
               <AlumniCard
-                key={a.id || a._id}
+                key={a.id}
                 alumni={a}
               />
             ))}

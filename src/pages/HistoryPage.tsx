@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { api, Slot } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
-import { Calendar, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function HistoryPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [history, setHistory] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,11 +40,13 @@ export default function HistoryPage() {
   const statusIcon = (status: string) => {
     switch (status) {
       case "booked":
+        return <CheckCircle className="h-4 w-4 text-blue-600" />;
+      case "approved":
         return <CheckCircle className="h-4 w-4 text-green-600" />;
       case "cancelled":
         return <XCircle className="h-4 w-4 text-red-600" />;
       case "rejected":
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
       default:
         return <Calendar className="h-4 w-4 text-gray-500" />;
     }
@@ -53,6 +57,13 @@ export default function HistoryPage() {
       <Navbar />
 
       <main className="mx-auto max-w-3xl px-4 py-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+
         <h1 className="mb-6 text-3xl font-bold">Appointment History</h1>
 
         {loading ? (
@@ -97,8 +108,18 @@ export default function HistoryPage() {
                   </div>
                 </div>
 
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs capitalize">
-                  {slot.status}
+                <span
+                  className={`rounded-full px-3 py-1 text-xs capitalize ${
+                    slot.status === "approved"
+                      ? "bg-green-100 text-green-800"
+                      : slot.status === "booked"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : slot.status === "rejected" || slot.status === "cancelled"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {slot.status === "approved" ? "Accepted" : slot.status === "booked" ? "Waiting" : slot.status}
                 </span>
               </div>
             ))}

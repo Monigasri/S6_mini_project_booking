@@ -132,10 +132,13 @@ router.get("/", authRequired, async (req, res) => {
       return res.json({ appointments: [] });
     }
 
-    // delete past available slots
+    // delete past available slots (strictly before today)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     await Appointment.deleteMany({
       status: "available",
-      date: { $lt: new Date() },
+      date: { $lt: startOfToday },
     });
 
     const appointments = await Appointment.find(query)

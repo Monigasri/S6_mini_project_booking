@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { api, Slot } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
-import { Plus, Calendar, User, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Calendar, User, AlertTriangle, ArrowLeft } from "lucide-react";
 
 export default function AlumniHome() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,11 +25,7 @@ export default function AlumniHome() {
 
     try {
       setLoading(true);
-
-      // For alumni viewing their own slots, backend now returns all slots (available + booked)
       const result = await api.getSlots(user.id);
-
-      // 🔥 Backend returns { appointments: [...] }
       setSlots(result.appointments || []);
     } catch (error) {
       console.error("Failed to load slots:", error);
@@ -43,34 +41,30 @@ export default function AlumniHome() {
 
   // ================= ADD SLOT =================
   const handleAddSlot = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!user) return;
+    e.preventDefault();
+    if (!user) return;
 
-  const slotDateTime = new Date(`${newDate}T${newTime}`);
-  const now = new Date();
+    const slotDateTime = new Date(`${newDate}T${newTime}`);
+    if (slotDateTime <= new Date()) {
+      alert("Invalid time: Cannot select past time");
+      return;
+    }
 
-  if (slotDateTime <= now) {
-    alert("Invalid time: Cannot select past time");
-    return;
-  }
+    const result = await api.addSlot(newDate, newTime);
 
-  const result = await api.addSlot(newDate, newTime);
+    if (!result.ok) {
+      alert(result.error || "Failed to add slot");
+      return;
+    }
 
+    alert("Slot added successfully");
+    setNewDate("");
+    setNewTime("");
+    setShowAdd(false);
+    loadSlots();
+  };
 
-  if (!result.ok) {
-    alert(result.error || "Failed to add slot");
-    return;
-  }
-
-  alert("Slot added successfully");
-
-  setNewDate("");
-  setNewTime("");
-  setShowAdd(false);
-  loadSlots();
-};
-
-  // ================= REJECT SLOT =================
+  // ================= REJECT =================
   const handleReject = async () => {
     if (!rejectSlot) return;
 
@@ -89,24 +83,43 @@ export default function AlumniHome() {
     loadSlots();
   };
 
+  // ================= APPROVE =================
+  const handleApprove = async (slotId: string) => {
+    const result = await api.approveBooking(slotId);
+
+    if (!result.ok) {
+      alert(result.error || "Failed to accept booking");
+      return;
+    }
+
+    alert("Booking accepted successfully!");
+    loadSlots();
+  };
+
   const now = new Date();
 
-const activeSlots = slots.filter((s) => {
-  const slotDateTime = new Date(`${s.date}T${s.time}`);
-
-  const isFuture = slotDateTime > now;
-
-  const validStatus =
-    s.status === "available" || s.status === "booked";
-
-  return isFuture && validStatus;
-});
+  const activeSlots = slots.filter((s) => {
+    const slotDateTime = new Date(`${s.date}T${s.time}`);
+    return (
+      slotDateTime > now &&
+      (s.status === "available" ||
+        s.status === "booked" ||
+        s.status === "approved")
+    );
+  });
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
       <main className="mx-auto max-w-4xl px-4 py-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Your Appointments</h1>
@@ -123,6 +136,24 @@ const activeSlots = slots.filter((s) => {
           </button>
         </div>
 
+        {/* Upcoming Reminder */}
+        {activeSlots.filter((s) => s.status === "approved").length > 0 && (
+          <div className="mb-8 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white shadow-lg">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Calendar className="h-6 w-6" />
+              Upcoming Sessions
+            </h2>
+            <p className="mt-2 opacity-90">
+              You have{" "}
+              <strong>
+                {activeSlots.filter((s) => s.status === "approved").length}
+              </strong>{" "}
+              confirmed session(s).
+            </p>
+          </div>
+        )}
+
+        {/* Main Content */}
         {loading ? (
           <div className="py-16 text-center">Loading slots...</div>
         ) : activeSlots.length === 0 ? (
@@ -134,20 +165,22 @@ const activeSlots = slots.filter((s) => {
             {activeSlots.map((slot) => (
               <div
                 key={slot.id || slot._id}
-                className="flex items-center justify-between rounded-xl border p-4"
+                className="flex items-center justify-between rounded-xl border p-4 shadow-sm bg-card"
               >
                 <div className="flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-primary" />
                   <div>
                     <div className="font-medium">
-                    {slot.date} at {slot.time}
-
+                      {slot.date} at {slot.time}
                     </div>
 
-                    {slot.status === "booked" && (
+                    {(slot.status === "booked" ||
+                      slot.status === "approved") && (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <User className="h-3.5 w-3.5" />
-                        Booked by {slot.bookedByName}
+                        {slot.bookedByName
+                          ? `Booked by ${slot.bookedByName}`
+                          : "Booked"}
                       </div>
                     )}
                   </div>
@@ -155,16 +188,25 @@ const activeSlots = slots.filter((s) => {
 
                 <div className="flex items-center gap-2">
                   {slot.status === "available" && (
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs text-green-600">
+                    <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium">
                       Available
                     </span>
                   )}
 
                   {slot.status === "booked" && (
                     <>
-                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs text-blue-600">
-                        Booked
+                      <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-700">
+                        Waiting
                       </span>
+
+                      <button
+                        onClick={() =>
+                          handleApprove(slot.id || slot._id || "")
+                        }
+                        className="rounded-lg bg-green-600 px-3 py-1 text-xs text-white"
+                      >
+                        Accept
+                      </button>
 
                       <button
                         onClick={() => setRejectSlot(slot)}
@@ -174,6 +216,12 @@ const activeSlots = slots.filter((s) => {
                       </button>
                     </>
                   )}
+
+                  {slot.status === "approved" && (
+                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs text-green-700 font-medium">
+                      Accepted
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -181,7 +229,7 @@ const activeSlots = slots.filter((s) => {
         )}
       </main>
 
-      {/* ================= ADD SLOT MODAL ================= */}
+      {/* ADD SLOT MODAL */}
       {showAdd && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/40"
@@ -227,7 +275,7 @@ const activeSlots = slots.filter((s) => {
         </div>
       )}
 
-      {/* ================= REJECT MODAL ================= */}
+      {/* REJECT MODAL */}
       {rejectSlot && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/40"
@@ -239,9 +287,7 @@ const activeSlots = slots.filter((s) => {
           >
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
-              <h3 className="text-lg font-semibold">
-                Reject Appointment
-              </h3>
+              <h3 className="text-lg font-semibold">Reject Appointment</h3>
             </div>
 
             <textarea

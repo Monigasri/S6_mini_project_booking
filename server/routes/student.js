@@ -27,13 +27,25 @@ function signToken(user) {
  * POST /api/student/register
  * Register a new student. Validates required fields: name, email, password, course, phone.
  */
+// ... imports
+
+/**
+ * POST /api/student/register
+ * Register a new student. Validates required fields.
+ */
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, course, phone } = req.body;
+    const {
+      name, email, password, phone,
+      college, degree, department, year, cgpa, graduationYear,
+      skills, areaOfInterest, linkedin, github,
+      description, location, photoUrl, mentorshipDomain, meetingMode
+    } = req.body;
 
-    if (!name || !email || !password || !course || !phone) {
+    // Basic required fields
+    if (!name || !email || !password || !phone) {
       return res.status(400).json({
-        message: "Name, email, password, course and phone are required",
+        message: "Name, email, password and phone are required",
       });
     }
 
@@ -48,9 +60,21 @@ router.post("/register", async (req, res) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
-      course: course.trim(),
       phone: phone.trim(),
       role: "student",
+
+      // New Fields
+      college, degree, department,
+      year: year || undefined, // Handle empty string for enum
+      cgpa: cgpa ? Number(cgpa) : undefined,
+      graduationYear: graduationYear ? Number(graduationYear) : undefined,
+
+      skills: Array.isArray(skills) ? skills : [],
+      areaOfInterest: Array.isArray(areaOfInterest) ? areaOfInterest : [],
+
+      linkedin, github,
+      description, location, photoUrl,
+      mentorshipDomain, meetingMode
     });
 
     const clientUser = toClientStudent(student);
@@ -59,7 +83,7 @@ router.post("/register", async (req, res) => {
     return res.status(201).json({ user: clientUser, token });
   } catch (error) {
     console.error("Error in POST /api/student/register", error);
-    return res.status(500).json({ message: "Failed to register student" });
+    return res.status(500).json({ message: error.message || "Failed to register student" });
   }
 });
 

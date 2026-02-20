@@ -9,13 +9,33 @@ const alumniSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
+
+    // Professional Details
     profession: { type: String, required: true, trim: true },
     company: { type: String, required: true, trim: true },
+    previousCompany: { type: String, trim: true },
+    industry: { type: String, trim: true },
     totalExperience: { type: Number, required: true },
     yearsInCurrentCompany: { type: Number, required: true },
-    previousCompany: { type: String, trim: true },
+    linkedin: { type: String, trim: true },
+    skills: [{ type: String, trim: true }],
+
+    // Education
+    graduationYear: { type: Number },
+    degree: { type: String, trim: true },
+    college: { type: String, trim: true },
+
+    // Personal / Contact
     phone: { type: String, required: true, trim: true },
-    description: { type: String, trim: true }, // short bio
+    location: { type: String, trim: true }, // "City, State, Country"
+    description: { type: String, trim: true }, // Short Bio
+    photoUrl: { type: String, trim: true },
+    meetingMode: {
+      type: String,
+      enum: ["Online", "Offline", "Both"],
+      default: "Online"
+    },
+
     role: { type: String, default: "alumni", enum: ["alumni"] },
     createdAt: { type: Date, default: Date.now },
   },

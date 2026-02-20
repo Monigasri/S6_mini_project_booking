@@ -6,12 +6,35 @@ export interface User {
   email: string;
   name: string;
   role: "student" | "alumni";
+
+  // Professional
   profession?: string;
   company?: string;
-  description?: string;
+  previousCompany?: string;
+  industry?: string;
+  totalExperience?: number;
+  yearsInCurrentCompany?: number;
+  linkedin?: string;
+  github?: string; // New
+  skills?: string[];
+  areaOfInterest?: string[]; // New
+
+  // Education
+  graduationYear?: number;
+  degree?: string;
+  college?: string;
+  department?: string; // New
+  year?: string; // New (1st, 2nd, etc)
+  cgpa?: number; // New
+  course?: string; // Legacy/Alias
+
+  // Personal
   phone?: string;
   location?: string;
-  totalExperience?: number;
+  description?: string;
+  photoUrl?: string;
+  meetingMode?: "Online" | "Offline" | "Both";
+  mentorshipDomain?: string; // New
 }
 
 export interface Slot {
@@ -51,6 +74,40 @@ export const api = {
 
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.message };
+
+    localStorage.setItem("token", data.token);
+    return { ok: true, data };
+  },
+
+  // ================= REGISTER ALUMNI =================
+  async registerAlumni(userData: Partial<User> & { password?: string }) {
+    const res = await fetch(`${BASE_URL}/alumni/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.message };
+    }
+
+    localStorage.setItem("token", data.token);
+    return { ok: true, data };
+  },
+
+  // ================= REGISTER STUDENT =================
+  async registerStudent(userData: Partial<User> & { password?: string }) {
+    const res = await fetch(`${BASE_URL}/student/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.message };
+    }
 
     localStorage.setItem("token", data.token);
     return { ok: true, data };
@@ -164,8 +221,23 @@ export const api = {
 
     return { ok: true, data };
   },
+  // ================= APPROVE/BOOK SLOT (ALUMNI ACCEPT) =================
+  async approveBooking(appointmentId: string) {
+    const res = await fetch(`${BASE_URL}/appointments/complete`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ appointmentId }),
+    });
 
-  
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.message };
+    }
+
+    return { ok: true, data };
+  },
+
 
   // ================= CANCEL SLOT =================
   async cancelSlot(appointmentId: string) {

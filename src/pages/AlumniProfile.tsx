@@ -15,6 +15,7 @@ import {
   Calendar,
   X,
   Check,
+  GraduationCap,
 } from "lucide-react";
 
 export default function AlumniProfile() {
@@ -137,38 +138,82 @@ export default function AlumniProfile() {
 
         {/* PROFILE CARD */}
         <div className="rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-white">
-              {alumni.name.charAt(0)}
+          <div className="flex flex-col md:flex-row items-start gap-6">
+            <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full bg-primary text-3xl font-bold text-white overflow-hidden">
+              {alumni.photoUrl ? (
+                <img src={alumni.photoUrl} alt={alumni.name} className="h-full w-full object-cover" />
+              ) : (
+                alumni.name.charAt(0)
+              )}
             </div>
 
-            <div>
-              <h1 className="text-2xl font-bold">{alumni.name}</h1>
+            <div className="flex-1 space-y-4">
+              <div>
+                <h1 className="text-3xl font-bold font-display">{alumni.name}</h1>
+                <p className="text-lg text-primary font-medium">{alumni.profession}</p>
+              </div>
 
-              <div className="mt-1 flex flex-wrap gap-3 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Briefcase className="h-3.5 w-3.5" />
-                  {alumni.profession}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <Building className="h-4 w-4" />
+                  {alumni.company} {alumni.yearsInCurrentCompany ? `(${alumni.yearsInCurrentCompany}y)` : ""}
                 </span>
-
-                <span className="flex items-center gap-1">
-                  <Building className="h-3.5 w-3.5" />
-                  {alumni.company}
-                </span>
-
+                {alumni.previousCompany && (
+                   <span className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Ex: {alumni.previousCompany}
+                  </span>
+                )}
                 {alumni.location && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
                     {alumni.location}
                   </span>
                 )}
+                {/* Education Section */}
+                {(alumni.college || alumni.degree) && (
+                   <span className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4" />
+                    {alumni.degree ? `${alumni.degree}, ` : ""} {alumni.college} {alumni.graduationYear ? `'${alumni.graduationYear.toString().slice(-2)}` : ""}
+                  </span>
+                )}
               </div>
+              
+              {alumni.linkedin && (
+                <a href={alumni.linkedin} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:underline text-sm font-medium">
+                   LinkedIn Profile ↗
+                </a>
+              )}
+
+              {alumni.skills && alumni.skills.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {alumni.skills.map(skill => (
+                    <span key={skill} className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           {alumni.description && (
-            <p className="mt-4 text-sm">{alumni.description}</p>
+            <div className="mt-6 pt-6 border-t border-dashed">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">About</h3>
+              <p className="text-base text-foreground leading-relaxed">{alumni.description}</p>
+            </div>
           )}
+          
+           <div className="mt-6 pt-6 border-t border-dashed flex gap-4 text-sm">
+              <div className="flex flex-col">
+                <span className="text-muted-foreground text-xs uppercase">Total Exp</span>
+                <span className="font-semibold">{alumni.totalExperience} Years</span>
+              </div>
+               <div className="flex flex-col">
+                <span className="text-muted-foreground text-xs uppercase">Meeting Mode</span>
+                <span className="font-semibold">{alumni.meetingMode || "Online"}</span>
+              </div>
+           </div>
         </div>
 
         {/* AVAILABLE SLOTS */}
