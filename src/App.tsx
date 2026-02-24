@@ -19,6 +19,7 @@ import AlumniDetailPage from "./pages/AlumniDetailPage";
 import ProfilePage from "./pages/ProfilePage";
 import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
+import AlumniStudentRequestDetail from "./pages/AlumniStudentRequestDetail";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,10 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+  path="/alumni/student-request/:id"
+  element={<AlumniStudentRequestDetail />}
+/>
 
               <Route path="*" element={<NotFound />} />
             </Routes>

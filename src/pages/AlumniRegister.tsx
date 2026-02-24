@@ -43,6 +43,21 @@ export default function AlumniRegister() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    setForm(prev => ({
+      ...prev,
+      photoUrl: reader.result as string,
+    }));
+  };
+
+  reader.readAsDataURL(file);
+};
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -170,13 +185,36 @@ export default function AlumniRegister() {
                   className="input-style"
                 />
 
-                <input
-                  name="photoUrl"
-                  placeholder="Profile Photo URL"
-                  value={form.photoUrl}
-                  onChange={handleChange}
-                  className="input-style"
-                />
+                <div className="space-y-3">
+  {/* <label className="text-sm font-semibold text-slate-700">
+    Profile Photo
+  </label> */}
+
+  {/* PHOTO UPLOAD */}
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-slate-700">Profile Photo</label>
+
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg shadow hover:bg-slate-800 transition text-sm">
+                      Choose Image
+                      <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                    </label>
+
+                    {form.photoUrl && (
+                      <img src={form.photoUrl} alt="Preview"
+                        className="h-16 w-16 rounded-full object-cover border shadow" />
+                    )}
+                  </div>
+
+                  <input
+                    name="photoUrl"
+                    placeholder="Or paste image URL here..."
+                    value={form.photoUrl}
+                    onChange={handleChange}
+                    className="w-full p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                  />
+                </div>
+</div>
 
                 <textarea
                   name="description"
@@ -326,7 +364,7 @@ export default function AlumniRegister() {
             <p className="text-center text-sm mt-4 text-slate-600">
               Already have an account?{" "}
               <Link
-                to="/login"
+                to="/alumni/login"
                 className="text-primary font-semibold hover:underline"
               >
                 Login here

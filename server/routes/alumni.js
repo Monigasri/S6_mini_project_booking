@@ -127,6 +127,37 @@ router.post("/register", async (req, res) => {
   }
 });
 
+// POST /api/alumni/login
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const alumni = await Alumni.findOne({ email: email.toLowerCase().trim() });
+
+    if (!alumni) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const isMatch = await bcrypt.compare(password, alumni.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const clientUser = toClientAlumni(alumni);
+    const token = signToken(clientUser);
+
+    return res.json({ user: clientUser, token });
+  } catch (error) {
+    console.error("Alumni login error:", error);
+    return res.status(500).json({ message: "Login failed" });
+  }
+});
+
 // GET /api/alumni - list alumni (from Alumni collection)
 router.get("/", authRequired, async (req, res) => {
   try {

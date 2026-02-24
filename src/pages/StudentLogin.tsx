@@ -17,7 +17,7 @@ export default function StudentLogin() {
 
     e.preventDefault();
     setError("");
-    const result = await api.login(email, password);
+    const result = await api.loginStudent(email, password);
 
     if (!result.ok) {
       setError(result.error || "Login failed");

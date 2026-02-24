@@ -7,6 +7,8 @@ import { authRequired } from "../middleware/auth.js";
 
 const router = express.Router();
 
+/* ================= HELPER ================= */
+
 function toClientUser(doc) {
   if (!doc) return null;
   const obj = doc.toObject ? doc.toObject({ versionKey: false }) : doc;
@@ -14,76 +16,81 @@ function toClientUser(doc) {
   return { id: _id.toString(), ...rest };
 }
 
+/* ================= UPDATE PROFILE ================= */
 /**
  * PUT /api/users/profile
- * Updates the authenticated user's profile. Uses Student or Alumni model based on role.
- * Legacy User collection is still supported for existing users.
+ * Updates authenticated user's profile (Student / Alumni / Legacy User)
  */
 router.put("/profile", authRequired, async (req, res) => {
   try {
     const { role, id } = req.user;
 
-    const allowedStudentFields = ["name", "email", "course", "phone", "location", "about"];
-    const allowedAlumniFields = [
-      "name",
-      "email",
-      "profession",
-      "company",
-      "totalExperience",
-      "yearsInCurrentCompany",
-      "previousCompany",
-      "phone",
-      "description",
-    ];
-    const allowedUserFields = [
-      "name",
-      "email",
-      "profession",
-      "company",
-      "previousCompany",
-      "previousCompanyExp",
-      "totalExperience",
-      "location",
-      "about",
-      "phone",
-    ];
-
-    let updates = {};
     let Model;
-    let allowedFields;
 
     if (role === "student") {
       Model = Student;
-      allowedFields = allowedStudentFields;
     } else if (role === "alumni") {
       Model = Alumni;
-      allowedFields = allowedAlumniFields;
     } else {
-      Model = User;
-      allowedFields = allowedUserFields;
+      Model = User; // fallback for legacy users
     }
 
-    allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-        if (field === "totalExperience" || field === "yearsInCurrentCompany") {
-          updates[field] = Number(req.body[field]);
-        }
-      }
-    });
+    // Copy all fields from request
+    const updates = { ...req.body };
 
-    const user = await Model.findByIdAndUpdate(id, updates, {
+    // Prevent sensitive updates
+    delete updates.password;
+    delete updates.role;
+    delete updates._id;
+    delete updates.id;
+    delete updates.email; // prevent email change (optional but safer)
+
+    // Convert numeric fields safely
+    if (updates.totalExperience !== undefined) {
+      updates.totalExperience = Number(updates.totalExperience);
+    }
+
+    if (updates.yearsInCurrentCompany !== undefined) {
+      updates.yearsInCurrentCompany = Number(updates.yearsInCurrentCompany);
+    }
+
+    if (updates.cgpa !== undefined) {
+      updates.cgpa = Number(updates.cgpa);
+    }
+
+    if (updates.graduationYear !== undefined) {
+      updates.graduationYear = Number(updates.graduationYear);
+    }
+
+    // Convert skills if sent as string
+    if (typeof updates.skills === "string") {
+      updates.skills = updates.skills
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    // Convert areaOfInterest if sent as string
+    if (typeof updates.areaOfInterest === "string") {
+      updates.areaOfInterest = updates.areaOfInterest
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    const updatedUser = await Model.findByIdAndUpdate(id, updates, {
       new: true,
       runValidators: true,
     });
 
-    if (!user) {
+    if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.json({ user: toClientUser(user) });
+    return res.json({ user: toClientUser(updatedUser) });
+
   } catch (error) {
-    console.error("Error in PUT /api/users/profile", error);
+    console.error("Error updating profile:", error);
     return res.status(500).json({ message: "Failed to update profile" });
   }
 });

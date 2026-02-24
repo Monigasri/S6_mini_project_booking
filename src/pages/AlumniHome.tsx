@@ -3,7 +3,13 @@ import { api, Slot } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar, User, AlertTriangle, ArrowLeft } from "lucide-react";
+import {
+  Plus,
+  Calendar,
+  User,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
 
 export default function AlumniHome() {
   const { user } = useAuth();
@@ -18,6 +24,7 @@ export default function AlumniHome() {
 
   const [rejectSlot, setRejectSlot] = useState<Slot | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [showRejectReason, setShowRejectReason] = useState(false);
 
   // ================= LOAD SLOTS =================
   const loadSlots = async () => {
@@ -80,6 +87,7 @@ export default function AlumniHome() {
 
     setRejectSlot(null);
     setRejectReason("");
+    setShowRejectReason(false);
     loadSlots();
   };
 
@@ -93,6 +101,7 @@ export default function AlumniHome() {
     }
 
     alert("Booking accepted successfully!");
+    setRejectSlot(null);
     loadSlots();
   };
 
@@ -109,204 +118,254 @@ export default function AlumniHome() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
 
-      <main className="mx-auto max-w-4xl px-4 py-8">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
-
-        <div className="mb-6 flex items-center justify-between">
+      <main className="mx-auto max-w-6xl px-4 py-10">
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Your Appointments</h1>
-            <p className="text-muted-foreground">
-              Manage your appointment slots
+            <h1 className="text-3xl font-bold text-slate-800">
+              Alumni Dashboard
+            </h1>
+            <p className="text-slate-500">
+              Manage your mentoring appointments
             </p>
           </div>
 
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm text-white"
-          >
+         <button
+  type="button"
+  onClick={() => setShowAdd(true)}
+  className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow hover:bg-blue-700"
+>
             <Plus className="h-4 w-4" /> Add Slot
           </button>
         </div>
 
-        {/* Upcoming Reminder */}
-        {activeSlots.filter((s) => s.status === "approved").length > 0 && (
-          <div className="mb-8 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white shadow-lg">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Calendar className="h-6 w-6" />
-              Upcoming Sessions
-            </h2>
-            <p className="mt-2 opacity-90">
-              You have{" "}
-              <strong>
-                {activeSlots.filter((s) => s.status === "approved").length}
-              </strong>{" "}
-              confirmed session(s).
-            </p>
-          </div>
-        )}
-
-        {/* Main Content */}
+        {/* ================= DASHBOARD 3:1 LAYOUT ================= */}
         {loading ? (
           <div className="py-16 text-center">Loading slots...</div>
-        ) : activeSlots.length === 0 ? (
-          <div className="py-16 text-center text-muted-foreground">
-            No active slots. Add one to start accepting appointments.
-          </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {activeSlots.map((slot) => (
-              <div
-                key={slot.id || slot._id}
-                className="flex items-center justify-between rounded-xl border p-4 shadow-sm bg-card"
-              >
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">
-                      {slot.date} at {slot.time}
-                    </div>
+          <div className="grid grid-cols-4 gap-8">
+            {/* LEFT PANEL */}
+            <div className="col-span-3 space-y-10">
+              {/* CONFIRMED */}
+              <div className="bg-white rounded-2xl border border-blue-100 shadow-md p-6">
+                <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  Upcoming Confirmed Sessions
+                </h2>
 
-                    {(slot.status === "booked" ||
-                      slot.status === "approved") && (
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <User className="h-3.5 w-3.5" />
-                        {slot.bookedByName
-                          ? `Booked by ${slot.bookedByName}`
-                          : "Booked"}
-                      </div>
-                    )}
+                {activeSlots.filter((s) => s.status === "approved").length ===
+                0 ? (
+                  <p className="text-slate-500 text-sm">
+                    No confirmed sessions yet.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {activeSlots
+                      .filter((s) => s.status === "approved")
+                      .map((slot) => (
+                        <div
+                          key={slot.id || slot._id}
+                          className="border border-blue-100 bg-blue-50 rounded-xl p-4"
+                        >
+                          <p className="font-medium text-slate-800">
+                            {slot.date} • {slot.time}
+                          </p>
+                          <p className="text-sm text-slate-600 mt-1">
+                            Student:{" "}
+                            <span className="font-semibold">
+                              {slot.bookedByName || "Student"}
+                            </span>
+                          </p>
+                        </div>
+                      ))}
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {slot.status === "available" && (
-                    <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium">
-                      Available
-                    </span>
-                  )}
-
-                  {slot.status === "booked" && (
-                    <>
-                      <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-700">
-                        Waiting
-                      </span>
-
-                      <button
-                        onClick={() =>
-                          handleApprove(slot.id || slot._id || "")
-                        }
-                        className="rounded-lg bg-green-600 px-3 py-1 text-xs text-white"
-                      >
-                        Accept
-                      </button>
-
-                      <button
-                        onClick={() => setRejectSlot(slot)}
-                        className="rounded-lg bg-red-600 px-3 py-1 text-xs text-white"
-                      >
-                        Reject
-                      </button>
-                    </>
-                  )}
-
-                  {slot.status === "approved" && (
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs text-green-700 font-medium">
-                      Accepted
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
-            ))}
+
+              {/* REQUESTS */}
+              <div className="bg-white rounded-2xl border border-yellow-100 shadow-md p-6">
+                <h2 className="text-xl font-semibold text-yellow-600 mb-4 flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Student Requests
+                </h2>
+
+                {activeSlots.filter((s) => s.status === "booked").length ===
+                0 ? (
+                  <p className="text-slate-500 text-sm">
+                    No pending requests.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {activeSlots
+                      .filter((s) => s.status === "booked")
+                      .map((slot) => (
+                        <div
+                          key={slot.id || slot._id}
+                          onClick={() => setRejectSlot(slot)}
+                          className="cursor-pointer border border-yellow-200 bg-yellow-50 rounded-xl p-4 hover:shadow-md transition"
+                        >
+                          <p className="font-medium text-slate-800">
+                            {slot.date} • {slot.time}
+                          </p>
+                          <p className="text-sm text-slate-700 mt-1">
+                            Requested by{" "}
+                            <span className="font-semibold">
+                              {slot.bookedByName || "Student"}
+                            </span>
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT PANEL */}
+            <div className="col-span-1">
+              <div className="bg-white rounded-2xl border border-blue-100 shadow-md p-6 sticky top-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-4 flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Your Available Slots
+                </h2>
+
+                {activeSlots.filter((s) => s.status === "available").length ===
+                0 ? (
+                  <p className="text-slate-500 text-sm">
+                    No available slots.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {activeSlots
+                      .filter((s) => s.status === "available")
+                      .map((slot) => (
+                        <div
+                          key={slot.id || slot._id}
+                          className="border border-blue-100 bg-blue-50 rounded-lg p-3 text-sm"
+                        >
+                          <p className="font-medium text-slate-800">
+                            {slot.date}
+                          </p>
+                          <p className="text-slate-600">{slot.time}</p>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </main>
 
-      {/* ADD SLOT MODAL */}
-      {showAdd && (
+      {/* ================= STUDENT DETAIL POPUP ================= */}
+      {rejectSlot && !showRejectReason && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-black/40"
-          onClick={() => setShowAdd(false)}
+          className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50"
+          onClick={() => setRejectSlot(null)}
         >
           <div
-            className="w-full max-w-sm rounded-xl bg-white p-6"
+            className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold">Add New Slot</h3>
+            <div className="flex items-center gap-3 mb-6">
+              <User className="h-6 w-6 text-blue-600" />
+              <h3 className="text-xl font-semibold text-blue-700">
+                Student Appointment Request
+              </h3>
+            </div>
 
-            <form onSubmit={handleAddSlot} className="mt-4 flex flex-col gap-3">
-              <input
-                type="date"
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                required
-                className="border p-2 rounded"
-              />
+            <div className="border border-blue-100 rounded-xl p-5 bg-blue-50 space-y-3">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold text-lg">
+                  {rejectSlot.bookedByName?.charAt(0) || "S"}
+                </div>
+                <div>
+                  <button
+  onClick={() =>
+    navigate(
+      `/alumni/student-request/${rejectSlot.id || rejectSlot._id}`,
+      { state: { returnToPopup: true } }
+    )
+  }
+  className="font-semibold text-blue-700 text-lg hover:underline"
+>
+  {rejectSlot.bookedByName || "Student"}
+</button>
 
-              <input
-                type="time"
-                value={newTime}
-                onChange={(e) => setNewTime(e.target.value)}
-                required
-                className="border p-2 rounded"
-              />
+                  <p className="text-sm text-slate-600">
+                    {rejectSlot.date} • {rejectSlot.time}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-              <div className="flex gap-2">
-                <button className="flex-1 bg-blue-600 text-white py-2 rounded">
-                  Add
-                </button>
+            {rejectSlot.status === "booked" && (
+              <div className="mt-8 flex gap-4">
                 <button
-                  type="button"
-                  onClick={() => setShowAdd(false)}
-                  className="flex-1 border py-2 rounded"
+                  onClick={() =>
+                    handleApprove(rejectSlot.id || rejectSlot._id || "")
+                  }
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium shadow"
                 >
-                  Cancel
+                  Accept Request
+                </button>
+
+                <button
+                  onClick={() => setShowRejectReason(true)}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-medium shadow"
+                >
+                  Reject
                 </button>
               </div>
-            </form>
+            )}
+
+            <button
+              onClick={() => setRejectSlot(null)}
+              className="mt-6 w-full text-sm text-slate-500 hover:text-slate-700"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
 
-      {/* REJECT MODAL */}
-      {rejectSlot && (
+      {/* ================= REJECT REASON POPUP ================= */}
+      {rejectSlot && showRejectReason && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-black/40"
-          onClick={() => setRejectSlot(null)}
+          className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50"
+          onClick={() => setShowRejectReason(false)}
         >
           <div
-            className="w-full max-w-sm rounded-xl bg-white p-6"
+            className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <h3 className="text-lg font-semibold">Reject Appointment</h3>
+            <div className="flex items-center gap-3 mb-6">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+              <h3 className="text-lg font-semibold text-red-600">
+                Reject Appointment
+              </h3>
             </div>
 
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Reason for rejection..."
-              className="mt-3 w-full border p-2 rounded"
+              placeholder="Enter reason for rejection..."
+              className="w-full border border-slate-200 rounded-lg p-3 text-sm"
             />
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-6 flex gap-3">
               <button
                 onClick={handleReject}
-                className="flex-1 bg-red-600 text-white py-2 rounded"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg"
               >
-                Reject
+                Confirm Reject
               </button>
+
               <button
-                onClick={() => setRejectSlot(null)}
-                className="flex-1 border py-2 rounded"
+                onClick={() => setShowRejectReason(false)}
+                className="flex-1 border py-2 rounded-lg"
               >
                 Cancel
               </button>
@@ -314,6 +373,73 @@ export default function AlumniHome() {
           </div>
         </div>
       )}
+
+
+
+      {/* ================= ADD SLOT POPUP ================= */}
+{showAdd && (
+  <div
+    className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50"
+    onClick={() => setShowAdd(false)}
+  >
+    <div
+      className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <Plus className="h-6 w-6 text-blue-600" />
+        <h3 className="text-xl font-semibold text-blue-700">
+          Add New Slot
+        </h3>
+      </div>
+
+      <form onSubmit={handleAddSlot} className="space-y-4">
+        <div>
+          <label className="text-sm font-medium text-slate-700">
+            Select Date
+          </label>
+          <input
+            type="date"
+            value={newDate}
+            onChange={(e) => setNewDate(e.target.value)}
+            required
+            className="mt-1 w-full border border-slate-300 rounded-lg p-2"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-slate-700">
+            Select Time
+          </label>
+          <input
+            type="time"
+            value={newTime}
+            onChange={(e) => setNewTime(e.target.value)}
+            required
+            className="mt-1 w-full border border-slate-300 rounded-lg p-2"
+          />
+        </div>
+
+        <div className="flex gap-3 pt-4">
+          <button
+            type="submit"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg"
+          >
+            Add Slot
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowAdd(false)}
+            className="flex-1 border py-2 rounded-lg"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
     </div>
   );
 }

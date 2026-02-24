@@ -10,23 +10,42 @@ const router = express.Router();
 /* ================= HELPER ================= */
 
 async function toClientAppointment(doc) {
-  const obj = doc.toObject ? doc.toObject({ versionKey: false }) : doc;
+  const obj = doc.toObject
+    ? doc.toObject({ versionKey: false })
+    : doc;
 
   let alumniName = null;
+  let studentData = null;
 
   if (obj.alumniId) {
     const alumni = await Alumni.findById(obj.alumniId).lean();
     alumniName = alumni?.name || null;
   }
 
+  // 🔥 ADD THIS BLOCK
+  if (obj.studentId) {
+    const student = await Student.findById(obj.studentId)
+      .select("-password")
+      .lean();
+
+    studentData = student || null;
+  }
+
   return {
     id: obj._id.toString(),
     alumniId: obj.alumniId?.toString() || null,
+
+    // 🔥 KEEP original studentId string
     studentId: obj.studentId?.toString() || null,
+
+    // 🔥 ADD FULL STUDENT OBJECT
+    student: studentData,
+
     date:
       obj.date instanceof Date
         ? obj.date.toISOString().slice(0, 10)
         : obj.date,
+
     time: obj.timeSlot,
     status: obj.status,
     bookedByName: obj.studentName || null,
@@ -35,6 +54,7 @@ async function toClientAppointment(doc) {
     createdAt: obj.createdAt,
   };
 }
+
 
 async function recordSlotHistory(appointment, status) {
   if (!appointment.studentId) return;
