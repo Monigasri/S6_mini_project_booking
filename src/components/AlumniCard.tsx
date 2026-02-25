@@ -22,9 +22,21 @@ export default function AlumniCard({ alumni }: AlumniCardProps) {
       className="group relative z-0 flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
     >
       {/* Avatar */}
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-xl font-bold text-primary-foreground">
-        {alumni.name?.charAt(0).toUpperCase()}
-      </div>
+      {/* Avatar */}
+<div className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden bg-primary text-xl font-bold text-primary-foreground">
+  {alumni.photoUrl && alumni.photoUrl.trim() !== "" ? (
+    <img
+      src={alumni.photoUrl}
+      alt={alumni.name}
+      className="h-full w-full object-cover"
+      onError={(e) => {
+        (e.target as HTMLImageElement).style.display = "none";
+      }}
+    />
+  ) : (
+    alumni.name?.charAt(0).toUpperCase()
+  )}
+</div>
 
       {/* Details */}
       <div className="w-full">

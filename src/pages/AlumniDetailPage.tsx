@@ -6,7 +6,12 @@ import {
   Calendar,
   Clock,
   ArrowLeft,
-  Building
+  Building,
+  Mail,
+  Phone,
+  MapPin,
+  Briefcase,
+  Globe,
 } from "lucide-react";
 
 export default function AlumniDetailPage() {
@@ -24,7 +29,6 @@ export default function AlumniDetailPage() {
 
       try {
         setLoading(true);
-
         const alumniData = await api.getAlumniById(id);
         setAlumni(alumniData);
 
@@ -42,18 +46,20 @@ export default function AlumniDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fdf6ec]">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
-        <div className="py-20 text-center text-blue-900">Loading...</div>
+        <div className="py-24 text-center text-slate-500 text-sm">
+          Loading profile...
+        </div>
       </div>
     );
   }
 
   if (!alumni) {
     return (
-      <div className="min-h-screen bg-[#fdf6ec]">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
-        <div className="py-20 text-center text-red-500">
+        <div className="py-24 text-center text-red-500 text-sm">
           Alumni not found.
         </div>
       </div>
@@ -61,165 +67,243 @@ export default function AlumniDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fdf6ec]">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
 
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-6 py-12">
+
+        {/* Back */}
         <button
           onClick={() => navigate(-1)}
-          className="mb-6 flex items-center gap-2 text-blue-900 hover:text-blue-600"
+          className="mb-8 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
         >
           <ArrowLeft size={16} /> Back
         </button>
 
-        <div className="rounded-3xl bg-white shadow-xl p-10 grid grid-cols-1 md:grid-cols-2 gap-10">
-          {/* ================= LEFT SIDE ================= */}
-          <div className="space-y-6">
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            {/* Profile Section */}
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="h-32 w-32 rounded-full bg-blue-100 flex items-center justify-center text-4xl font-bold text-blue-800 overflow-hidden ring-4 ring-white shadow-lg">
-                {alumni.photoUrl ? (
-                  <img
-                    src={alumni.photoUrl}
-                    alt={alumni.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  alumni.name?.charAt(0)
-                )}
-              </div>
+          {/* ================= LEFT COLUMN (PROFILE) ================= */}
+          <div className="lg:col-span-2 space-y-6">
 
-              <div>
-                <h1 className="text-3xl font-bold text-blue-900">
-                  {alumni.name}
-                </h1>
+            {/* Profile Card */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+              <div className="flex items-center gap-6">
 
-                <p className="text-blue-600 font-medium text-lg">
-                  {alumni.profession}
-                </p>
+                <div className="h-28 w-28 rounded-full overflow-hidden ring-2 ring-blue-100 shadow-sm">
+                  {alumni.photoUrl ? (
+                    <img
+                      src={alumni.photoUrl}
+                      alt={alumni.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-blue-100 flex items-center justify-center text-3xl font-semibold text-blue-700">
+                      {alumni.name?.charAt(0)}
+                    </div>
+                  )}
+                </div>
 
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mt-1">
-                  <span className="flex items-center gap-1">
-                    <Building size={14} />
-                    {alumni.company}
-                  </span>
+                <div>
+                  <h1 className="text-2xl font-semibold text-slate-800">
+                    {alumni.name}
+                  </h1>
+
+                  <p className="text-blue-600 text-sm mt-1">
+                    {alumni.profession}
+                  </p>
+
+                  <p className="text-slate-500 text-xs mt-1 flex items-center gap-1">
+                    <Building size={14} /> {alumni.company}
+                  </p>
 
                   {alumni.location && (
-                    <span>• {alumni.location}</span>
+                    <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
+                      <MapPin size={14} /> {alumni.location}
+                    </p>
+                  )}
+
+                  <div className="flex gap-6 mt-4 text-xs text-slate-500">
+                    <span>
+                      <strong>{alumni.totalExperience || 0}+</strong> Years Experience
+                    </span>
+                    <span>
+                      <strong>{slots.length}</strong> Total Slots
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* About */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                About
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {alumni.description || "No description provided."}
+              </p>
+            </div>
+
+            {/* Professional Details Grid */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+              <h3 className="text-sm font-semibold text-slate-700 mb-6">
+                Professional Details
+              </h3>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+
+                <div>
+                  <p className="text-xs text-slate-400">Industry</p>
+                  <p className="font-medium">{alumni.industry || "-"}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400">Previous Company</p>
+                  <p className="font-medium">{alumni.previousCompany || "-"}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400">Mentorship Domain</p>
+                  <p className="font-medium">{alumni.mentorshipDomain || "-"}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400">Meeting Mode</p>
+                  <p className="font-medium">{alumni.meetingMode || "-"}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400">Email</p>
+                  <p className="font-medium">{alumni.email || "-"}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400">Phone</p>
+                  <p className="font-medium">{alumni.phone || "-"}</p>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Skills */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+              <h3 className="text-sm font-semibold text-slate-700 mb-4">
+                Skills
+              </h3>
+
+              <div className="flex flex-wrap gap-2">
+                {alumni.skills && alumni.skills.length > 0 ? (
+                  alumni.skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100"
+                    >
+                      {skill}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400">
+                    No skills listed.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Social Links */}
+            {(alumni.linkedin || alumni.github) && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">
+                  Social Profiles
+                </h3>
+
+                <div className="flex flex-col gap-3 text-sm">
+                  {alumni.linkedin && (
+                    <a
+                      href={alumni.linkedin}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-2"
+                    >
+                      <Globe size={14} /> LinkedIn
+                    </a>
+                  )}
+
+                  {alumni.github && (
+                    <a
+                      href={alumni.github}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-700 hover:underline flex items-center gap-2"
+                    >
+                      <Globe size={14} /> GitHub
+                    </a>
                   )}
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                <div className="text-2xl font-bold text-blue-800">
-                  {alumni.totalExperience || 0}+
-                </div>
-                <div className="text-xs text-blue-600 uppercase tracking-wide font-semibold">
-                  Years Exp
-                </div>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                <div className="text-2xl font-bold text-blue-800">
-                  {slots.length}
-                </div>
-                <div className="text-xs text-blue-600 uppercase tracking-wide font-semibold">
-                  Total Slots
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-                About
-              </h3>
-
-              <p className="text-slate-600 leading-relaxed">
-                {alumni.description || "No description available."}
-              </p>
-            </div>
           </div>
 
-          {/* ================= RIGHT SIDE ================= */}
-          <div>
-            <h2 className="text-2xl font-semibold text-blue-900 mb-6">
+          {/* ================= RIGHT COLUMN (SLOTS) ================= */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 h-fit">
+            <h2 className="text-lg font-semibold text-slate-800 mb-6">
               Available Slots
             </h2>
 
             <div className="space-y-4">
               {slots.length === 0 ? (
-                <div className="text-gray-500">
+                <p className="text-sm text-slate-400">
                   No slots available.
-                </div>
+                </p>
               ) : (
-                slots.map((slot) => {
-                  let statusStyle =
-                    "bg-blue-100 text-blue-800 border-blue-200";
-
-                  if (slot.status === "approved")
-                    statusStyle =
-                      "bg-green-100 text-green-700 border-green-200";
-
-                  if (slot.status === "cancelled")
-                    statusStyle =
-                      "bg-red-100 text-red-700 border-red-200";
-
-                  if (slot.status === "booked")
-                    statusStyle =
-                      "bg-blue-200 text-blue-900 border-blue-300";
-
-                  return (
-                    <div
-                      key={slot.id || slot._id}
-                      className={`flex items-center justify-between p-4 rounded-xl border ${statusStyle}`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2 font-medium">
-                          <Calendar size={16} />
-                          {slot.date}
-                        </div>
-
-                        <div className="flex items-center gap-2 text-sm">
-                          <Clock size={14} />
-                          {slot.time}
-                        </div>
+                slots.map((slot) => (
+                  <div
+                    key={slot.id || slot._id}
+                    className="border border-slate-200 rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                        <Calendar size={14} />
+                        {slot.date}
                       </div>
 
-                      {slot.status === "available" ? (
-                        <button
-                          onClick={() => setConfirmSlot(slot)}
-                          className="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800"
-                        >
-                          Book
-                        </button>
-                      ) : (
-                        <span className="text-sm font-semibold capitalize">
-                          {slot.status}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                        <Clock size={12} />
+                        {slot.time}
+                      </div>
                     </div>
-                  );
-                })
+
+                    {slot.status === "available" ? (
+                      <button
+                        onClick={() => setConfirmSlot(slot)}
+                        className="text-xs bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Book
+                      </button>
+                    ) : (
+                      <span className="text-xs font-medium capitalize text-slate-500">
+                        {slot.status}
+                      </span>
+                    )}
+                  </div>
+                ))
               )}
             </div>
           </div>
+
         </div>
       </main>
 
       {/* ================= BOOKING MODAL ================= */}
       {confirmSlot && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-lg">
-            <h3 className="text-lg font-semibold text-blue-900">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-slate-800">
               Confirm Booking
             </h3>
 
-            <p className="mt-3 text-sm text-gray-600">
+            <p className="mt-3 text-sm text-slate-600">
               Connect with <strong>{alumni.name}</strong> on{" "}
               <strong>{confirmSlot.date}</strong> at{" "}
               <strong>{confirmSlot.time}</strong>?
@@ -238,18 +322,17 @@ export default function AlumniDetailPage() {
                   }
 
                   setConfirmSlot(null);
-
                   const updatedResponse = await api.getSlots(id!);
                   setSlots(updatedResponse.appointments || []);
                 }}
-                className="flex-1 rounded-lg bg-blue-700 py-2 text-white hover:bg-blue-800"
+                className="flex-1 rounded-lg bg-blue-600 py-2 text-white text-sm hover:bg-blue-700 transition"
               >
                 Confirm
               </button>
 
               <button
                 onClick={() => setConfirmSlot(null)}
-                className="flex-1 rounded-lg border border-blue-300 py-2 text-blue-800"
+                className="flex-1 rounded-lg border border-slate-300 py-2 text-sm text-slate-700 hover:bg-slate-100 transition"
               >
                 Cancel
               </button>
