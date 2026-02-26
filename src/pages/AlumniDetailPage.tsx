@@ -1,55 +1,107 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, User, Slot } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
+import { toast } from "sonner";
 import {
-  Calendar,
-  Clock,
   ArrowLeft,
-  Building,
-  Mail,
-  Phone,
   MapPin,
   Briefcase,
-  Globe,
+  Building,
+  Clock,
+  Calendar,
+  X,
+  Check,
+  GraduationCap,
+  ExternalLink,
+  Loader2,
+  CalendarPlus,
+  Mail,
 } from "lucide-react";
 
 export default function AlumniDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [alumni, setAlumni] = useState<User | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [confirmSlot, setConfirmSlot] = useState<Slot | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      if (!id) return;
+  // ================= LOAD DATA FROM BACKEND =================
+  const loadData = async () => {
+    if (!id) return;
 
-      try {
-        setLoading(true);
-        const alumniData = await api.getAlumniById(id);
-        setAlumni(alumniData);
+    try {
+      setLoading(true);
 
-        const slotResponse = await api.getSlots(id);
-        setSlots(slotResponse.appointments || []);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
+      const alumniRes = await api.getAlumniById(id);
+      if (alumniRes) {
+        setAlumni(alumniRes);
+        const slotRes = await api.getSlots(id);
+        setSlots(slotRes.appointments || []);
+      } else {
+        setAlumni(null);
       }
-    };
+    } catch (error) {
+      console.error("Failed to load alumni profile:", error);
+      setAlumni(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, [id]);
 
+  // ================= BOOK SLOT =================
+  const handleBook = async () => {
+    if (!confirmSlot) return;
+
+    const appointmentId = confirmSlot.id || confirmSlot._id;
+    if (!appointmentId) {
+      toast.error("Invalid slot ID");
+      return;
+    }
+
+    const result = await api.bookSlot(appointmentId);
+
+    if (!result.ok) {
+      toast.error(result.error || "Failed to book appointment");
+      return;
+    }
+
+    toast.success("Appointment booked successfully!", {
+      description: `You have booked a session with ${alumni?.name} on ${confirmSlot.date} at ${confirmSlot.time}`,
+    });
+
+    setConfirmSlot(null);
+    loadData();
+
+    setTimeout(() => {
+      navigate("/student/home");
+    }, 1800);
+  };
+
+  // Placeholder for messaging feature (can be connected later)
+  const handleSendMessage = () => {
+    toast.info("Direct messaging is coming soon", {
+      description: "You will be able to send a custom request directly to the mentor.",
+    });
+    // In future: open chat modal or navigate to messages page
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-gradient-to-b from-cream-50 to-white">
         <Navbar />
-        <div className="py-24 text-center text-slate-500 text-sm">
-          Loading profile...
+        <div className="flex flex-col items-center justify-center py-32 text-slate-500">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600 mb-4" />
+          <p className="font-medium animate-pulse text-blue-900/60">Loading mentor profile...</p>
         </div>
       </div>
     );
@@ -57,285 +109,275 @@ export default function AlumniDetailPage() {
 
   if (!alumni) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-gradient-to-b from-cream-50 to-white">
         <Navbar />
-        <div className="py-24 text-center text-red-500 text-sm">
-          Alumni not found.
+        <div className="mx-auto max-w-xl px-4 py-32 text-center">
+          <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-500">
+            <X className="h-10 w-10" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-slate-900">Mentor Not Found</h1>
+          <p className="mt-4 text-slate-600 text-lg">
+            The profile you're looking for might have been removed or the link is incorrect.
+          </p>
+          <button
+            onClick={() => navigate("/student/home")}
+            className="mt-8 rounded-2xl bg-blue-600 px-10 py-4 text-white font-semibold hover:bg-blue-700 transition-all shadow-md"
+          >
+            Back to Mentors
+          </button>
         </div>
       </div>
     );
   }
 
+  const availableSlots = slots.filter((s) => s.status === "available");
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-b from-cream-50 via-white to-cream-50/40">
       <Navbar />
 
-      <main className="mx-auto max-w-7xl px-6 py-12">
-
-        {/* Back */}
+      <main className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
         <button
           onClick={() => navigate(-1)}
-          className="mb-8 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+          className="group mb-8 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-700 transition-colors"
         >
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+          Back to Mentors
         </button>
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* ================= LEFT COLUMN (PROFILE) ================= */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* Profile Card */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-              <div className="flex items-center gap-6">
-
-                <div className="h-28 w-28 rounded-full overflow-hidden ring-2 ring-blue-100 shadow-sm">
-                  {alumni.photoUrl ? (
-                    <img
-                      src={alumni.photoUrl}
-                      alt={alumni.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-blue-100 flex items-center justify-center text-3xl font-semibold text-blue-700">
-                      {alumni.name?.charAt(0)}
-                    </div>
-                  )}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 xl:gap-10">
+          {/* LEFT - Profile Info */}
+          <div className="lg:col-span-8 space-y-8">
+            <div className="rounded-3xl bg-white p-8 lg:p-10 shadow-sm border border-slate-100">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-8 lg:gap-12">
+                <div className="relative group">
+                  <div className="h-44 w-44 lg:h-52 lg:w-52 rounded-3xl overflow-hidden border-4 border-white shadow-lg">
+                    {alumni.photoUrl ? (
+                      <img
+                        src={alumni.photoUrl}
+                        alt={alumni.name}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-blue-100 flex items-center justify-center text-blue-600 text-6xl font-bold">
+                        {alumni.name?.charAt(0)?.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <h1 className="text-2xl font-semibold text-slate-800">
-                    {alumni.name}
-                  </h1>
-
-                  <p className="text-blue-600 text-sm mt-1">
-                    {alumni.profession}
-                  </p>
-
-                  <p className="text-slate-500 text-xs mt-1 flex items-center gap-1">
-                    <Building size={14} /> {alumni.company}
-                  </p>
-
-                  {alumni.location && (
-                    <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
-                      <MapPin size={14} /> {alumni.location}
+                <div className="flex-1 space-y-5 text-center md:text-left">
+                  <div>
+                    <h1 className="text-4xl lg:text-5xl font-bold text-slate-900">
+                      {alumni.name}
+                    </h1>
+                    <p className="mt-2 text-xl text-blue-700 font-medium">
+                      {alumni.profession}
                     </p>
-                  )}
+                  </div>
 
-                  <div className="flex gap-6 mt-4 text-xs text-slate-500">
-                    <span>
-                      <strong>{alumni.totalExperience || 0}+</strong> Years Experience
-                    </span>
-                    <span>
-                      <strong>{slots.length}</strong> Total Slots
-                    </span>
+                  <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                    {alumni.company && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full text-blue-800 text-sm font-medium">
+                        <Building className="h-4 w-4" />
+                        {alumni.company}
+                      </div>
+                    )}
+                    {alumni.location && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full text-blue-800 text-sm font-medium">
+                        <MapPin className="h-4 w-4" />
+                        {alumni.location}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-4 justify-center md:justify-start pt-2">
+                    {alumni.linkedin && (
+                      <a
+                        href={alumni.linkedin}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700 transition-all shadow-sm"
+                      >
+                        View LinkedIn <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
+                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-50 text-green-800 rounded-2xl font-medium border border-green-100">
+                      <Check className="h-4 w-4" /> Verified Mentor
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* About */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">
-                About
-              </h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {alumni.description || "No description provided."}
-              </p>
-            </div>
-
-            {/* Professional Details Grid */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-              <h3 className="text-sm font-semibold text-slate-700 mb-6">
-                Professional Details
-              </h3>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
-
-                <div>
-                  <p className="text-xs text-slate-400">Industry</p>
-                  <p className="font-medium">{alumni.industry || "-"}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400">Previous Company</p>
-                  <p className="font-medium">{alumni.previousCompany || "-"}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400">Mentorship Domain</p>
-                  <p className="font-medium">{alumni.mentorshipDomain || "-"}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400">Meeting Mode</p>
-                  <p className="font-medium">{alumni.meetingMode || "-"}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400">Email</p>
-                  <p className="font-medium">{alumni.email || "-"}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400">Phone</p>
-                  <p className="font-medium">{alumni.phone || "-"}</p>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Skills */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4">
-                Skills
-              </h3>
-
-              <div className="flex flex-wrap gap-2">
-                {alumni.skills && alumni.skills.length > 0 ? (
-                  alumni.skills.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100"
-                    >
-                      {skill}
-                    </span>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-400">
-                    No skills listed.
+              {alumni.description && (
+                <div className="mt-12 pt-10 border-t border-slate-100">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-4">
+                    About
+                  </h3>
+                  <p className="text-lg text-slate-700 leading-relaxed">
+                    {alumni.description}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
+
+              {alumni.skills?.length > 0 && (
+                <div className="mt-10 pt-10 border-t border-slate-100">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-5">
+                    Skills & Expertise
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
+                    {alumni.skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="px-5 py-2 bg-blue-50 text-blue-800 rounded-2xl text-sm font-medium border border-blue-100 hover:bg-blue-100 transition-colors"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Social Links */}
-            {(alumni.linkedin || alumni.github) && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-                <h3 className="text-sm font-semibold text-slate-700 mb-4">
-                  Social Profiles
+            {/* Education */}
+            {(alumni.degree || alumni.college) && (
+              <div className="rounded-3xl bg-white p-8 lg:p-10 shadow-sm border border-slate-100">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-6">
+                  Education
                 </h3>
-
-                <div className="flex flex-col gap-3 text-sm">
-                  {alumni.linkedin && (
-                    <a
-                      href={alumni.linkedin}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-600 hover:underline flex items-center gap-2"
-                    >
-                      <Globe size={14} /> LinkedIn
-                    </a>
-                  )}
-
-                  {alumni.github && (
-                    <a
-                      href={alumni.github}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-slate-700 hover:underline flex items-center gap-2"
-                    >
-                      <Globe size={14} /> GitHub
-                    </a>
-                  )}
+                <div className="flex items-start gap-5">
+                  <div className="p-4 bg-blue-50 rounded-2xl text-blue-600">
+                    <GraduationCap className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-semibold text-slate-900">{alumni.degree}</h4>
+                    <p className="text-slate-700">{alumni.college}</p>
+                    {alumni.graduationYear && (
+                      <p className="mt-2 inline-block px-4 py-1.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium">
+                        Class of {alumni.graduationYear}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
-
           </div>
 
-          {/* ================= RIGHT COLUMN (SLOTS) ================= */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 h-fit">
-            <h2 className="text-lg font-semibold text-slate-800 mb-6">
-              Available Slots
-            </h2>
+          {/* RIGHT - Booking Sidebar */}
+          <div className="lg:col-span-4">
+            <div className="sticky top-8 space-y-8">
+              {/* Booking Card */}
+              <div className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-3">
+                  <CalendarPlus className="h-6 w-6 text-blue-600" />
+                  Available Sessions
+                </h3>
 
-            <div className="space-y-4">
-              {slots.length === 0 ? (
-                <p className="text-sm text-slate-400">
-                  No slots available.
-                </p>
-              ) : (
-                slots.map((slot) => (
-                  <div
-                    key={slot.id || slot._id}
-                    className="border border-slate-200 rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <Calendar size={14} />
-                        {slot.date}
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                        <Clock size={12} />
-                        {slot.time}
-                      </div>
-                    </div>
-
-                    {slot.status === "available" ? (
-                      <button
-                        onClick={() => setConfirmSlot(slot)}
-                        className="text-xs bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-                      >
-                        Book
-                      </button>
-                    ) : (
-                      <span className="text-xs font-medium capitalize text-slate-500">
-                        {slot.status}
-                      </span>
-                    )}
+                {availableSlots.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                    <Clock className="mx-auto h-10 w-10 mb-4 opacity-70" />
+                    <p className="font-medium">No available slots right now</p>
+                    <p className="mt-2 text-sm">Check back later or send a direct request</p>
                   </div>
-                ))
-              )}
+                ) : (
+                  <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300">
+                    {availableSlots.map((slot) => (
+                      <button
+                        key={slot.id || slot._id}
+                        onClick={() => setConfirmSlot(slot)}
+                        className="w-full flex items-center justify-between p-5 rounded-2xl border border-slate-200 hover:border-blue-300 bg-white hover:bg-blue-50/30 transition-all text-left group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="p-3.5 rounded-2xl bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <Calendar className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-900">{slot.date}</div>
+                            <div className="text-sm text-slate-600">{slot.time}</div>
+                          </div>
+                        </div>
+                        <span className="text-blue-600 font-medium group-hover:translate-x-1 transition-transform">
+                          Book →
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-8 pt-6 border-t border-slate-100 space-y-4 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Experience</span>
+                    <span className="font-semibold text-slate-800">
+                      {alumni.totalExperience || "?"} years
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Meeting Mode</span>
+                    <span className="font-semibold text-slate-800">
+                      {alumni.meetingMode || "Online"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Message / Custom Request */}
+              <div className="rounded-3xl bg-blue-50/60 p-8 border border-blue-100 shadow-sm text-center">
+                <div className="mx-auto w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-5 text-blue-700">
+                  <Mail className="h-7 w-7" />
+                </div>
+                <h4 className="text-xl font-bold text-slate-900 mb-3">
+                  Need a custom time?
+                </h4>
+                <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+                  Send a direct message to discuss availability and session details.
+                </p>
+                <button
+                  onClick={handleSendMessage}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold hover:bg-blue-700 transition-all shadow-sm"
+                >
+                  Send Message
+                </button>
+              </div>
             </div>
           </div>
-
         </div>
       </main>
 
-      {/* ================= BOOKING MODAL ================= */}
+      {/* Confirmation Modal */}
       {confirmSlot && (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-slate-800">
-              Confirm Booking
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <div className="text-center">
+              <div className="mx-auto mb-6 w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
+                <CalendarPlus className="h-8 w-8" />
+              </div>
 
-            <p className="mt-3 text-sm text-slate-600">
-              Connect with <strong>{alumni.name}</strong> on{" "}
-              <strong>{confirmSlot.date}</strong> at{" "}
-              <strong>{confirmSlot.time}</strong>?
-            </p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-4">
+                Confirm Booking
+              </h3>
 
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={async () => {
-                  const res = await api.bookSlot(
-                    confirmSlot.id || confirmSlot._id!
-                  );
+              <p className="text-slate-600 mb-8">
+                Book session with <strong>{alumni.name}</strong> on
+                <br />
+                <span className="font-semibold text-blue-700 mt-2 inline-block">
+                  {confirmSlot.date} at {confirmSlot.time}
+                </span>
+              </p>
 
-                  if (!res.ok) {
-                    alert(res.error);
-                    return;
-                  }
-
-                  setConfirmSlot(null);
-                  const updatedResponse = await api.getSlots(id!);
-                  setSlots(updatedResponse.appointments || []);
-                }}
-                className="flex-1 rounded-lg bg-blue-600 py-2 text-white text-sm hover:bg-blue-700 transition"
-              >
-                Confirm
-              </button>
-
-              <button
-                onClick={() => setConfirmSlot(null)}
-                className="flex-1 rounded-lg border border-slate-300 py-2 text-sm text-slate-700 hover:bg-slate-100 transition"
-              >
-                Cancel
-              </button>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setConfirmSlot(null)}
+                  className="py-4 rounded-2xl border-2 border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBook}
+                  className="py-4 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition shadow-md"
+                >
+                  Confirm Booking
+                </button>
+              </div>
             </div>
           </div>
         </div>

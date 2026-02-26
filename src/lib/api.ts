@@ -153,15 +153,17 @@ export const api = {
   },
 
   async getAlumniById(id: string) {
-    const res = await fetch(`${BASE_URL}/alumni/${id}`, {
-      headers: getAuthHeaders(),
-    });
+  const res = await fetch(`${BASE_URL}/alumni/${id}`, {
+    headers: getAuthHeaders(),
+  });
 
-    const data = await res.json();
-    if (!res.ok) return null;
+  if (!res.ok) {
+    return null;
+  }
 
-    return data.alumni || null;
-  },
+  const data = await res.json();
+  return data.alumni || null;
+},
 
   /* ================= GET SLOTS ================= */
   async getSlots(alumniId: string) {
@@ -246,18 +248,22 @@ export const api = {
     return this.cancelSlot(appointmentId);
   },
 
-  async updateProfile(userId: string, data: Partial<User>) {
-    const res = await fetch(`${BASE_URL}/users/profile`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
+ updateProfile: async (id: string, data: any) => {
+  const res = await fetch(`${BASE_URL}/users/profile`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
 
-    const responseData = await res.json();
-    if (!res.ok) {
-      return { ok: false, error: responseData.message };
-    }
+  const json = await res.json();
 
-    return { ok: true, data: responseData.user };
-  },
+  if (!res.ok) {
+    return { ok: false, error: json.message || "Update failed" };
+  }
+
+  return {
+    ok: true,
+    data: json.user,
+  };
+},
 };

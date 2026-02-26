@@ -24,10 +24,8 @@ function signToken(user) {
   );
 }
 
-/**
- * POST /api/alumni/register
- * Register a new alumni. Validates required fields per Alumni model.
- */
+/* ================= REGISTER ================= */
+
 router.post("/register", async (req, res) => {
   try {
     const {
@@ -41,7 +39,7 @@ router.post("/register", async (req, res) => {
       totalExperience,
       yearsInCurrentCompany,
       linkedin,
-      skills, // comma separated string or array
+      skills,
       graduationYear,
       degree,
       college,
@@ -69,6 +67,7 @@ router.post("/register", async (req, res) => {
 
     const totalExp = Number(totalExperience);
     const yearsCurrent = Number(yearsInCurrentCompany);
+
     if (Number.isNaN(totalExp) || Number.isNaN(yearsCurrent)) {
       return res.status(400).json({
         message: "Experience must be a number",
@@ -82,7 +81,6 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Parse skills
     let skillsArray = [];
     if (Array.isArray(skills)) {
       skillsArray = skills;
@@ -94,7 +92,6 @@ router.post("/register", async (req, res) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
-
       profession: profession.trim(),
       company: company.trim(),
       previousCompany: previousCompany ? String(previousCompany).trim() : undefined,
@@ -103,17 +100,14 @@ router.post("/register", async (req, res) => {
       yearsInCurrentCompany: yearsCurrent,
       linkedin: linkedin ? String(linkedin).trim() : undefined,
       skills: skillsArray,
-
       graduationYear: graduationYear ? Number(graduationYear) : undefined,
       degree: degree ? String(degree).trim() : undefined,
       college: college ? String(college).trim() : undefined,
-
       phone: phone.trim(),
       location: location ? String(location).trim() : undefined,
       description: description ? String(description).trim() : undefined,
       photoUrl: photoUrl ? String(photoUrl).trim() : undefined,
       meetingMode: meetingMode || "Online",
-
       role: "alumni",
     });
 
@@ -121,13 +115,15 @@ router.post("/register", async (req, res) => {
     const token = signToken(clientUser);
 
     return res.status(201).json({ user: clientUser, token });
+
   } catch (error) {
     console.error("Error in POST /api/alumni/register", error);
     return res.status(500).json({ message: "Failed to register alumni" });
   }
 });
 
-// POST /api/alumni/login
+/* ================= LOGIN ================= */
+
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -137,13 +133,11 @@ router.post("/login", async (req, res) => {
     }
 
     const alumni = await Alumni.findOne({ email: email.toLowerCase().trim() });
-
     if (!alumni) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
     const isMatch = await bcrypt.compare(password, alumni.password);
-
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
@@ -152,13 +146,15 @@ router.post("/login", async (req, res) => {
     const token = signToken(clientUser);
 
     return res.json({ user: clientUser, token });
+
   } catch (error) {
     console.error("Alumni login error:", error);
     return res.status(500).json({ message: "Login failed" });
   }
 });
 
-// GET /api/alumni - list alumni (from Alumni collection)
+/* ================= LIST ALUMNI ================= */
+
 router.get("/", authRequired, async (req, res) => {
   try {
     const search = String(req.query.search || "").toLowerCase();
@@ -181,23 +177,120 @@ router.get("/", authRequired, async (req, res) => {
     }
 
     return res.json({ alumni: filtered.map(doc => toClientAlumni(doc)) });
+
   } catch (error) {
     console.error("Error in GET /api/alumni", error);
     return res.status(500).json({ message: "Failed to load alumni" });
   }
 });
 
-// GET /api/alumni/:id - single alumni profile
+/* ================= GET SINGLE ALUMNI ================= */
+/* THIS WAS MISSING — NOW ADDED */
+
 router.get("/:id", authRequired, async (req, res) => {
   try {
+    console.log("Requested ID:", req.params.id);
+
     const alumni = await Alumni.findById(req.params.id);
+
+    console.log("Found alumni:", alumni);
+
     if (!alumni) {
       return res.status(404).json({ message: "Alumni not found" });
     }
+
     return res.json({ alumni: toClientAlumni(alumni) });
+
   } catch (error) {
     console.error("Error in GET /api/alumni/:id", error);
-    return res.status(500).json({ message: "Failed to load alumni profile" });
+    return res.status(500).json({ message: "Failed to fetch alumni" });
+  }
+});
+
+/* ================= UPDATE ================= */
+
+router.put("/:id", authRequired, async (req, res) => {
+  try {
+    if (req.user.id !== req.params.id) {
+      return res.status(403).json({ message: "Not authorized to update this profile" });
+    }
+
+    const {
+      name,
+      profession,
+      company,
+      previousCompany,
+      industry,
+      totalExperience,
+      yearsInCurrentCompany,
+      linkedin,
+      skills,
+      graduationYear,
+      degree,
+      college,
+      phone,
+      location,
+      description,
+      photoUrl,
+      meetingMode,
+    } = req.body;
+
+    if (
+      !name ||
+      !profession ||
+      !company ||
+      totalExperience === undefined ||
+      yearsInCurrentCompany === undefined ||
+      !phone
+    ) {
+      return res.status(400).json({
+        message: "Required fields missing. Please fill all mandatory fields.",
+      });
+    }
+
+    const totalExp = Number(totalExperience);
+    const yearsCurrent = Number(yearsInCurrentCompany);
+
+    let skillsArray = [];
+    if (Array.isArray(skills)) {
+      skillsArray = skills;
+    } else if (typeof skills === "string") {
+      skillsArray = skills.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+
+    const updatedAlumni = await Alumni.findByIdAndUpdate(
+      req.params.id,
+      {
+        name: name.trim(),
+        profession: profession.trim(),
+        company: company.trim(),
+        previousCompany: previousCompany ? String(previousCompany).trim() : undefined,
+        industry: industry ? String(industry).trim() : undefined,
+        totalExperience: totalExp,
+        yearsInCurrentCompany: yearsCurrent,
+        linkedin: linkedin ? String(linkedin).trim() : undefined,
+        skills: skillsArray,
+        graduationYear: graduationYear ? Number(graduationYear) : undefined,
+        degree: degree ? String(degree).trim() : undefined,
+        college: college ? String(college).trim() : undefined,
+        phone: phone.trim(),
+        location: location ? String(location).trim() : undefined,
+        description: description ? String(description).trim() : undefined,
+        photoUrl: photoUrl ? String(photoUrl).trim() : undefined,
+        meetingMode: meetingMode || "Online",
+      },
+      { new: true }
+    );
+
+    if (!updatedAlumni) {
+      return res.status(404).json({ message: "Alumni not found" });
+    }
+
+    return res.json({ alumni: toClientAlumni(updatedAlumni) });
+
+  } catch (error) {
+    console.error("Error in PUT /api/alumni/:id", error);
+    return res.status(500).json({ message: "Failed to update alumni profile" });
   }
 });
 

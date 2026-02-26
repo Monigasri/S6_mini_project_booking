@@ -194,5 +194,82 @@ router.get("/:id", authRequired, async (req, res) => {
   }
 });
 
+/* ================= UPDATE STUDENT PROFILE ================= */
+
+router.put("/:id", authRequired, async (req, res) => {
+  try {
+    // Only allow students to update their own profile
+    if (req.user.id !== req.params.id) {
+      return res.status(403).json({
+        message: "Not authorized to update this profile",
+      });
+    }
+
+    const {
+      name,
+      phone,
+      college,
+      degree,
+      department,
+      year,
+      cgpa,
+      graduationYear,
+      skills,
+      areaOfInterest,
+      linkedin,
+      github,
+      description,
+      location,
+      photoUrl,
+      mentorshipDomain,
+      meetingMode,
+    } = req.body;
+
+    if (!name || !phone) {
+      return res.status(400).json({
+        message: "Name and phone are required",
+      });
+    }
+
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      {
+        name: name.trim(),
+        phone: phone.trim(),
+        college,
+        degree,
+        department,
+        year: year || undefined,
+        cgpa: cgpa ? Number(cgpa) : undefined,
+        graduationYear: graduationYear ? Number(graduationYear) : undefined,
+        skills: Array.isArray(skills) ? skills : [],
+        areaOfInterest: Array.isArray(areaOfInterest) ? areaOfInterest : [],
+        linkedin,
+        github,
+        description,
+        location,
+        photoUrl,
+        mentorshipDomain,
+        meetingMode,
+      },
+      { new: true }
+    ).select("-password");
+
+    if (!updatedStudent) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    return res.json({
+      student: toClientStudent(updatedStudent),
+    });
+  } catch (error) {
+    console.error("Update student error:", error);
+    return res.status(500).json({
+      message: error.message || "Failed to update student profile",
+    });
+  }
+});
 
 export default router;
