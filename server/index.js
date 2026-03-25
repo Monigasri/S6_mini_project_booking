@@ -12,7 +12,8 @@ import messageRoutes from "./routes/messages.js";
 import "./utils/reminderJob.js";
 
 // Always load the root .env (regardless of the current working directory).
-dotenv.config({ path: new URL("../.env", import.meta.url) });
+// dotenv.config({ path: new URL("../.env", import.meta.url) });
+dotenv.config();
 
 const app = express();
 
