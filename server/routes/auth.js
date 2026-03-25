@@ -6,6 +6,7 @@ import User from "../models/User.js";
 import Student from "../models/Student.js";
 import Alumni from "../models/Alumni.js";
 import { authRequired } from "../middleware/auth.js";
+import { sendEmail } from "../utils/sendEmail.js"; // ✅ ADDED
 
 const router = express.Router();
 
@@ -30,11 +31,8 @@ function signToken(user) {
   );
 }
 
-/**
- * POST /api/auth/login
- * Login checks Student collection first, then Alumni, then legacy User.
- * Returns JWT with id and role. Does not break existing JWT-based auth.
- */
+/* ================= LOGIN ================= */
+
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -65,7 +63,6 @@ router.post("/login", async (req, res) => {
       return res.json({ user: clientUser, token });
     }
 
-    // Legacy: check old User collection so existing users are not broken
     user = await User.findOne({ email: normalizedEmail });
     if (user) {
       const passwordMatches = await bcrypt.compare(password, user.password);
@@ -84,38 +81,193 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Optional: generic register kept for backward compatibility; prefer /api/student/register and /api/alumni/register
+/* ================= REGISTER ================= */
+
+/* ================= REGISTER ================= */
+
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+
+      phone,
+      college,
+      degree,
+      department,
+      year,
+      cgpa,
+      graduationYear,
+      skills,
+      areaOfInterest,
+      linkedin,
+      github,
+      description,
+      mentorshipDomain,
+      meetingMode,
+      location,
+      photoUrl
+    } = req.body;
 
     if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: "Name, email, password and role are required" });
+      return res.status(400).json({ message: "Required fields missing" });
     }
 
-    const existingStudent = await Student.findOne({ email: email.toLowerCase() });
-    const existingAlumni = await Alumni.findOne({ email: email.toLowerCase() });
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingStudent || existingAlumni || existingUser) {
+    const normalizedEmail = email.toLowerCase();
+
+    // check duplicates
+    const existing =
+      (await Student.findOne({ email: normalizedEmail })) ||
+      (await Alumni.findOne({ email: normalizedEmail })) ||
+      (await User.findOne({ email: normalizedEmail }));
+
+    if (existing) {
       return res.status(400).json({ message: "Email already registered" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
+    // ✅ Create base user
+    const baseUser = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       role,
     });
 
-    const clientUser = toClientUser(user);
+    let profileDoc = null;
+
+    // ✅ Create student profile
+    if (role === "student") {
+      profileDoc = await Student.create({
+        name,
+        email: normalizedEmail,
+        password: hashedPassword,
+        phone,
+
+        college,
+        degree,
+        department,
+        year,
+        cgpa: Number(cgpa),
+        graduationYear: Number(graduationYear),
+
+        skills: Array.isArray(skills)
+          ? skills
+          : (skills || "").split(",").map(s => s.trim()).filter(Boolean),
+
+        areaOfInterest: Array.isArray(areaOfInterest)
+          ? areaOfInterest
+          : (areaOfInterest || "").split(",").map(s => s.trim()).filter(Boolean),
+
+        linkedin,
+        github,
+        description,
+        mentorshipDomain,
+        meetingMode,
+        location,
+        photoUrl,
+      });
+    }
+
+    const clientUser = toClientUser(profileDoc || baseUser);
     const token = signToken(clientUser);
 
     return res.status(201).json({ user: clientUser, token });
+
   } catch (error) {
-    console.error("Error in /api/auth/register", error);
+    console.error("Register error:", error);
     return res.status(500).json({ message: "Failed to register user" });
+  }
+});
+
+/* ================= FORGOT PASSWORD (NEW) ================= */
+
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    let user =
+      (await Student.findOne({ email: normalizedEmail })) ||
+      (await Alumni.findOne({ email: normalizedEmail })) ||
+      (await User.findOne({ email: normalizedEmail }));
+
+    if (!user) {
+      // don't reveal if user exists
+      return res.json({ ok: true });
+    }
+
+    const frontendBaseUrl = String(process.env.FRONTEND_URL || "http://localhost:8080").replace(
+      /\/$/,
+      ""
+    );
+    const resetLink = `${frontendBaseUrl}/reset-password/${user._id}`;
+
+    await sendEmail(
+      user.email,
+      "Reset Password",
+      `Hello ${user.name},
+
+Click the link below to reset your password:
+
+${resetLink}
+
+If you did not request this, ignore this email.`
+    );
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res.status(500).json({ ok: false });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { id, password } = req.body;
+
+    if (!id || !password) {
+      return res.status(400).json({ message: "Invalid request" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const student = await Student.findById(id);
+    if (student) {
+      student.password = await bcrypt.hash(password, 10);
+      await student.save();
+      return res.json({ message: "Password updated successfully", role: "student" });
+    }
+
+    const alumni = await Alumni.findById(id);
+    if (alumni) {
+      alumni.password = await bcrypt.hash(password, 10);
+      await alumni.save();
+      return res.json({ message: "Password updated successfully", role: "alumni" });
+    }
+
+    const legacyUser = await User.findById(id);
+    if (!legacyUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    legacyUser.password = await bcrypt.hash(password, 10);
+    await legacyUser.save();
+
+    return res.json({
+      message: "Password updated successfully",
+      role: legacyUser.role || "student",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to reset password" });
   }
 });
 

@@ -1,9 +1,18 @@
 import { useState, useEffect } from "react";
-import { api, User, Slot } from "@/lib/api";
+import { api, User, Slot, Message, MessageThreadAlumni } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import AlumniCard from "@/components/AlumniCard";
 import { useNavigate } from "react-router-dom";
-import { Search, Calendar, CheckCircle2, ArrowLeft, Clock, User as UserIcon } from "lucide-react";
+import {
+  Search,
+  Calendar,
+  CheckCircle2,
+  ArrowLeft,
+  Clock,
+  User as UserIcon,
+  MessageSquare,
+  Send,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function StudentHome() {
@@ -14,6 +23,19 @@ export default function StudentHome() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [bookedSlots, setBookedSlots] = useState<(Slot & { alumniName?: string })[]>([]);
+  const [showMessagePopup, setShowMessagePopup] = useState(false);
+
+  // ================= MESSAGES =================
+  const [messageThreads, setMessageThreads] = useState<MessageThreadAlumni[]>([]);
+  const [activeMessageOther, setActiveMessageOther] = useState<{
+    alumniId: string;
+    alumniName: string;
+    alumniPhotoUrl?: string | null;
+  } | null>(null);
+  const [messageThreadMessages, setMessageThreadMessages] = useState<Message[]>([]);
+  const [messageText, setMessageText] = useState("");
+  const [showMessageThread, setShowMessageThread] = useState(false);
+  const [loadingThreads, setLoadingThreads] = useState(false);
 
   // ================= FETCH ALUMNI =================
   const fetchAlumni = async () => {
@@ -62,6 +84,59 @@ export default function StudentHome() {
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
+  // ================= LOAD MESSAGE THREADS =================
+  const loadMessageThreads = async () => {
+    if (!user) return;
+
+    try {
+      setLoadingThreads(true);
+      const res = await api.getMessageThreads();
+      if (res.ok) setMessageThreads(res.threads || []);
+      else setMessageThreads([]);
+    } catch (error) {
+      console.error("Failed to load message threads:", error);
+      setMessageThreads([]);
+    } finally {
+      setLoadingThreads(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMessageThreads();
+  }, [user]);
+
+  const openMessageThread = async (alumniId: string) => {
+    const res = await api.getMessageThread(alumniId);
+    if (!res.ok) {
+      alert(res.error || "Failed to load messages");
+      return;
+    }
+    if (!res.other) return;
+
+    setActiveMessageOther(res.other);
+    setMessageThreadMessages(res.messages || []);
+    setMessageText("");
+    setShowMessageThread(true);
+  };
+
+  const sendMessage = async () => {
+    if (!activeMessageOther) return;
+    if (!messageText.trim()) return;
+
+    const res = await api.sendMessageToAlumni(
+      activeMessageOther.alumniId,
+      messageText.trim()
+    );
+
+    if (!res.ok) {
+      alert(res.error || "Failed to send message");
+      return;
+    }
+
+    await openMessageThread(activeMessageOther.alumniId);
+    await loadMessageThreads();
+  };
+
   const confirmedCount = bookedSlots.filter((s) => s.status === "approved").length;
 
   return (
@@ -71,26 +146,83 @@ export default function StudentHome() {
       <main className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
         {/* Back + Greeting */}
         <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
 
-          
+  {/* LEFT SIDE */}
+  <button
+    onClick={() => navigate(-1)}
+    className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition"
+  >
+    <ArrowLeft className="h-4 w-4" />
+    Back
+  </button>
 
-          
-        </div>
-        <div className="text-right sm:text-left">
-            <h1 className="text-2xl font-bold text-slate-800">
-              Hello, {user?.name || "Student"} 👋
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Discover alumni mentors and manage your upcoming sessions
-            </p>
-          </div> <br></br>
+  
+</div>
+        <div className="flex items-start justify-between mb-6">
+
+  {/* LEFT SIDE - GREETING */}
+  <div>
+    <h1 className="text-2xl font-bold text-slate-800">
+      Hello, {user?.name || "Student"} 👋
+    </h1>
+    <p className="mt-1 text-sm text-slate-500">
+      Discover alumni mentors and manage your upcoming sessions
+    </p>
+  </div>
+
+  {/* RIGHT SIDE - MESSAGES BUTTON */}
+  <div className="relative">
+    <button
+      onClick={() => setShowMessagePopup(!showMessagePopup)}
+      className="relative flex items-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-slate-50 shadow-sm text-sm font-medium text-indigo-700"
+    >
+      <MessageSquare className="h-5 w-5 text-indigo-600" />
+      Messages
+
+      {messageThreads.reduce((sum, t) => sum + (t.unreadCount || 0), 0) > 0 && (
+        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
+          {messageThreads.reduce((sum, t) => sum + (t.unreadCount || 0), 0)}
+        </span>
+      )}
+    </button>
+
+    {/* POPUP */}
+    {showMessagePopup && (
+      <div className="absolute right-0 top-12 w-80 bg-white border rounded-xl shadow-lg p-4 z-50">
+        <h3 className="font-semibold text-indigo-700 mb-3">
+          Messages
+        </h3>
+
+        {loadingThreads ? (
+          <p className="text-sm text-slate-500">Loading...</p>
+        ) : messageThreads.length === 0 ? (
+          <p className="text-sm text-slate-500">No messages</p>
+        ) : (
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {messageThreads.map((t) => (
+              <div
+                key={t.alumniId}
+                onClick={() => {
+                  openMessageThread(t.alumniId);
+                  setShowMessagePopup(false);
+                }}
+                className="cursor-pointer p-3 rounded-lg hover:bg-indigo-50 border"
+              >
+                <p className="font-medium text-sm">
+                  {t.alumniName}
+                </p>
+                <p className="text-xs text-slate-600 truncate">
+                  {t.lastMessage}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+
+</div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* LEFT COLUMN - Alumni Search + List */}
@@ -299,6 +431,8 @@ export default function StudentHome() {
                 )}
               </div>
 
+              
+
               {/* Optional small confirmed count banner */}
               {/* {confirmedCount > 0 && (
                 <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 p-4 text-sm">
@@ -312,6 +446,95 @@ export default function StudentHome() {
           </div>
         </div>
       </main>
+
+      {/* ================= MESSAGE THREAD MODAL ================= */}
+      {showMessageThread && activeMessageOther && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50 p-4"
+          onClick={() => setShowMessageThread(false)}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center overflow-hidden">
+                  {activeMessageOther.alumniPhotoUrl ? (
+                    <img
+                      src={activeMessageOther.alumniPhotoUrl}
+                      alt={activeMessageOther.alumniName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-indigo-700 font-bold">
+                      {activeMessageOther.alumniName?.charAt(0) || "A"}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-indigo-700">
+                    Messages
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    {activeMessageOther.alumniName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMessageThread(false)}
+                className="text-slate-500 hover:text-slate-700 text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="max-h-[340px] overflow-y-auto pr-2 space-y-3">
+              {messageThreadMessages.length === 0 ? (
+                <p className="text-slate-500 text-sm">No messages yet.</p>
+              ) : (
+                messageThreadMessages.map((m) => (
+                  <div
+                    key={m._id || m.id || `${m.createdAt}-${m.senderRole}`}
+                    className={`flex ${m.senderRole === "student" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap border ${
+                        m.senderRole === "student"
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-slate-100 text-slate-800 border-slate-200"
+                      }`}
+                    >
+                      {m.content}
+                      <div className="text-[10px] mt-1 opacity-70 text-right">
+                        {m.createdAt ? new Date(m.createdAt).toLocaleString() : ""}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 flex items-end gap-3">
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Write a message..."
+                className="flex-1 min-h-[44px] max-h-[140px] resize-none border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              <button
+                type="button"
+                onClick={sendMessage}
+                disabled={!messageText.trim()}
+                className="h-[44px] px-4 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

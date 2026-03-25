@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, Slot } from "@/lib/api";
+import { api, Slot, Message, MessageThreadStudent } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +9,8 @@ import {
   User,
   AlertTriangle,
   CheckCircle,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 
 export default function AlumniHome() {
@@ -21,10 +23,23 @@ export default function AlumniHome() {
   const [showAdd, setShowAdd] = useState(false);
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
+  const [showMessagePopup, setShowMessagePopup] = useState(false);
 
   const [rejectSlot, setRejectSlot] = useState<Slot | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectReason, setShowRejectReason] = useState(false);
+
+  // ================= MESSAGES =================
+  const [messageThreads, setMessageThreads] = useState<MessageThreadStudent[]>([]);
+  const [activeMessageOther, setActiveMessageOther] = useState<{
+    studentId: string;
+    studentName: string;
+    studentPhotoUrl?: string | null;
+  } | null>(null);
+  const [messageThreadMessages, setMessageThreadMessages] = useState<Message[]>([]);
+  const [messageText, setMessageText] = useState("");
+  const [showMessageThread, setShowMessageThread] = useState(false);
+  const [loadingThreads, setLoadingThreads] = useState(false);
 
   // ================= LOAD SLOTS =================
   const loadSlots = async () => {
@@ -45,6 +60,62 @@ export default function AlumniHome() {
   useEffect(() => {
     loadSlots();
   }, [user]);
+
+  // ================= LOAD MESSAGE THREADS =================
+  const loadMessageThreads = async () => {
+    if (!user) return;
+
+    try {
+      setLoadingThreads(true);
+      const res = await api.getMessageThreads();
+      if (res.ok) {
+        setMessageThreads(res.threads || []);
+      } else {
+        setMessageThreads([]);
+      }
+    } catch (error) {
+      console.error("Failed to load message threads:", error);
+      setMessageThreads([]);
+    } finally {
+      setLoadingThreads(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMessageThreads();
+  }, [user]);
+
+  const openMessageThread = async (studentId: string) => {
+    const res = await api.getMessageThread(studentId);
+    if (!res.ok) {
+      alert(res.error || "Failed to load messages");
+      return;
+    }
+
+    if (!res.other) return;
+    setActiveMessageOther(res.other);
+    setMessageThreadMessages(res.messages || []);
+    setMessageText("");
+    setShowMessageThread(true);
+  };
+
+  const sendMessageReply = async () => {
+    if (!activeMessageOther) return;
+    if (!messageText.trim()) return;
+
+    const res = await api.sendMessageToStudent(
+      activeMessageOther.studentId,
+      messageText.trim()
+    );
+
+    if (!res.ok) {
+      alert(res.error || "Failed to send message");
+      return;
+    }
+
+    await openMessageThread(activeMessageOther.studentId);
+    await loadMessageThreads();
+  };
 
   // ================= ADD SLOT =================
   const handleAddSlot = async (e: React.FormEvent) => {
@@ -133,13 +204,69 @@ export default function AlumniHome() {
             </p>
           </div>
 
-         <button
-  type="button"
-  onClick={() => setShowAdd(true)}
-  className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow hover:bg-blue-700"
+         <div className="flex items-center gap-4 relative">
+
+  {/* MESSAGE ICON */}
+  <button
+  onClick={() => setShowMessagePopup(!showMessagePopup)}
+  className="relative flex items-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-slate-50 shadow-sm text-sm font-medium text-indigo-700"
 >
-            <Plus className="h-4 w-4" /> Add Slot
-          </button>
+  <MessageSquare className="h-5 w-5 text-indigo-600" />
+  Messages
+
+  {/* UNREAD BADGE */}
+  {messageThreads.reduce((sum, t) => sum + (t.unreadCount || 0), 0) > 0 && (
+    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
+      {messageThreads.reduce((sum, t) => sum + (t.unreadCount || 0), 0)}
+    </span>
+  )}
+</button>
+
+  {/* ADD SLOT BUTTON */}
+  <button
+    type="button"
+    onClick={() => setShowAdd(true)}
+    className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow hover:bg-blue-700"
+  >
+    <Plus className="h-4 w-4" /> Add Slot
+  </button>
+
+  {/* POPUP */}
+  {showMessagePopup && (
+    <div className="absolute right-0 top-12 w-80 bg-white border rounded-xl shadow-lg p-4 z-50">
+      <h3 className="font-semibold text-indigo-700 mb-3">
+        Messages
+      </h3>
+
+      {loadingThreads ? (
+        <p className="text-sm text-slate-500">Loading...</p>
+      ) : messageThreads.length === 0 ? (
+        <p className="text-sm text-slate-500">No messages</p>
+      ) : (
+        <div className="space-y-2 max-h-72 overflow-y-auto">
+          {messageThreads.map((t) => (
+            <div
+              key={t.studentId}
+              onClick={() => {
+                openMessageThread(t.studentId);
+                setShowMessagePopup(false);
+              }}
+              className="cursor-pointer p-3 rounded-lg hover:bg-indigo-50 border"
+            >
+              <p className="font-medium text-sm">
+                {t.studentName}
+              </p>
+              <p className="text-xs text-slate-600 truncate">
+                {t.lastMessage}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )}
+
+</div>
         </div>
 
         {/* ================= DASHBOARD 3:1 LAYOUT ================= */}
@@ -221,40 +348,49 @@ export default function AlumniHome() {
                   </div>
                 )}
               </div>
+
+              
             </div>
 
-            {/* RIGHT PANEL */}
-            <div className="col-span-1">
-              <div className="bg-white rounded-2xl border border-blue-100 shadow-md p-6 sticky top-8">
-                <h2 className="text-lg font-semibold text-blue-700 mb-4 flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Your Available Slots
-                </h2>
+     {/* RIGHT PANEL */}
+                  
+    <div className="col-span-1 space-y-8">
 
-                {activeSlots.filter((s) => s.status === "available").length ===
-                0 ? (
-                  <p className="text-slate-500 text-sm">
-                    No available slots.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {activeSlots
-                      .filter((s) => s.status === "available")
-                      .map((slot) => (
-                        <div
-                          key={slot.id || slot._id}
-                          className="border border-blue-100 bg-blue-50 rounded-lg p-3 text-sm"
-                        >
-                          <p className="font-medium text-slate-800">
-                            {slot.date}
-                          </p>
-                          <p className="text-slate-600">{slot.time}</p>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
+  {/* AVAILABLE SLOTS BELOW */}
+  <div className="bg-white rounded-2xl border border-blue-100 shadow-md p-6 sticky top-8">
+    <h2 className="text-lg font-semibold text-blue-700 mb-4 flex items-center gap-2">
+      <Calendar className="h-5 w-5" />
+      Your Available Slots
+    </h2>
+
+    {activeSlots.filter((s) => s.status === "available").length === 0 ? (
+      <p className="text-slate-500 text-sm">
+        No available slots.
+      </p>
+    ) : (
+      <div className="space-y-3">
+        {activeSlots
+          .filter((s) => s.status === "available")
+          .map((slot) => (
+            <div
+              key={slot.id || slot._id}
+              className="border border-blue-100 bg-blue-50 rounded-lg p-3 text-sm"
+            >
+              <p className="font-medium text-slate-800">
+                {slot.date}
+              </p>
+              <p className="text-slate-600">{slot.time}</p>
             </div>
+          ))}
+      </div>
+    )}
+  </div>
+
+</div>
+
+
+
+
           </div>
         )}
       </main>
@@ -374,7 +510,94 @@ export default function AlumniHome() {
         </div>
       )}
 
+      {/* ================= MESSAGE THREAD MODAL ================= */}
+      {showMessageThread && activeMessageOther && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50 p-4"
+          onClick={() => setShowMessageThread(false)}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center overflow-hidden">
+                  {activeMessageOther.studentPhotoUrl ? (
+                    <img
+                      src={activeMessageOther.studentPhotoUrl}
+                      alt={activeMessageOther.studentName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-indigo-700 font-bold">
+                      {activeMessageOther.studentName?.charAt(0) || "S"}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-indigo-700">
+                    Messages
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    {activeMessageOther.studentName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMessageThread(false)}
+                className="text-slate-500 hover:text-slate-700 text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
 
+            <div className="max-h-[340px] overflow-y-auto pr-2 space-y-3">
+              {messageThreadMessages.length === 0 ? (
+                <p className="text-slate-500 text-sm">No messages yet.</p>
+              ) : (
+                messageThreadMessages.map((m) => (
+                  <div
+                    key={m._id || m.id || `${m.createdAt}-${m.senderRole}`}
+                    className={`flex ${m.senderRole === "alumni" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap border ${
+                        m.senderRole === "alumni"
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-slate-100 text-slate-800 border-slate-200"
+                      }`}
+                    >
+                      {m.content}
+                      <div className="text-[10px] mt-1 opacity-70 text-right">
+                        {m.createdAt ? new Date(m.createdAt).toLocaleString() : ""}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 flex items-end gap-3">
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Write a reply..."
+                className="flex-1 min-h-[44px] max-h-[140px] resize-none border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              <button
+                type="button"
+                onClick={sendMessageReply}
+                disabled={!messageText.trim()}
+                className="h-[44px] px-4 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= ADD SLOT POPUP ================= */}
 {showAdd && (

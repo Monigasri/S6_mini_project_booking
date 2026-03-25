@@ -207,6 +207,9 @@ router.get("/:id", authRequired, async (req, res) => {
   }
 });
 
+
+
+
 /* ================= UPDATE ================= */
 
 router.put("/:id", authRequired, async (req, res) => {

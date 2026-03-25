@@ -4,6 +4,7 @@ import Student from "../models/Student.js";
 import Alumni from "../models/Alumni.js";
 import SlotHistory from "../models/SlotHistory.js";
 import { authRequired } from "../middleware/auth.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 const router = express.Router();
 
@@ -228,6 +229,29 @@ router.post("/book", authRequired, async (req, res) => {
 
     await appointment.save();
 
+
+    // ✅ FETCH ALUMNI
+    const alumni = await Alumni.findById(appointment.alumniId);
+
+    // ✅ SEND EMAIL TO ALUMNI
+    await sendEmail(
+      alumni.email,
+      "a new student has came for guidlence",
+      `Hello ${alumni.name},
+
+A new student has came for guidlence.
+
+Student: ${student.name}
+
+Date: ${appointment.date.toISOString().slice(0, 10)}
+Time: ${appointment.timeSlot}
+
+Please login to accept or reject.`
+    );
+
+
+
+
     return res.json({
       appointment: await toClientAppointment(appointment),
     });
@@ -298,6 +322,27 @@ router.post("/reject", authRequired, async (req, res) => {
     appointment.rejectReason = reason || null;
     await appointment.save();
 
+
+
+    // ✅ GET STUDENT
+    const student = await Student.findById(appointment.studentId);
+
+    // ✅ EMAIL TO STUDENT
+    await sendEmail(
+      student.email,
+      "sorry you slot has canced",
+      `Hello ${student.name},
+
+sorry you slot has canced.
+
+Reason: ${reason || "Not specified"}
+
+Date: ${appointment.date.toISOString().slice(0, 10)}
+Time: ${appointment.timeSlot}`
+    );
+
+
+
     return res.json({
       appointment: await toClientAppointment(appointment),
     });
@@ -332,6 +377,19 @@ router.post("/complete", authRequired, async (req, res) => {
     appointment.status = "approved";
     await appointment.save();
 
+    const student = await Student.findById(appointment.studentId);
+
+    await sendEmail(
+      student.email,
+      "your slot has comfirmed",
+      `Hello ${student.name},
+
+your slot has comfirmed.
+
+Date: ${appointment.date.toISOString().slice(0, 10)}
+Time: ${appointment.timeSlot}`
+    );
+
     return res.json({
       appointment: await toClientAppointment(appointment),
     });
@@ -344,3 +402,22 @@ router.post("/complete", authRequired, async (req, res) => {
 });
 
 export default router;
+
+
+router.get("/test-email", async (req, res) => {
+  try {
+    console.log("🚀 TEST EMAIL ROUTE HIT");
+
+    await sendEmail(
+      "kubrii07@gmail.com",
+      "TEST EMAIL",
+      "If you receive this, email is working"
+    );
+
+    console.log("✅ Test email sent");
+    res.send("Test email triggered");
+  } catch (err) {
+    console.error("❌ Test email failed:", err);
+    res.send("Error");
+  }
+});

@@ -20,6 +20,9 @@ import ProfilePage from "./pages/ProfilePage";
 import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
 import AlumniStudentRequestDetail from "./pages/AlumniStudentRequestDetail";
+import ResetPassword from "./pages/ResetPassword";
+
+
 
 const queryClient = new QueryClient();
 
@@ -85,10 +88,11 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-  path="/alumni/student-request/:id"
-  element={<AlumniStudentRequestDetail />}
-/>
+              <Route path="/alumni/student-request/:id" 
+                element={<AlumniStudentRequestDetail />}
+              />
+              <Route path="/reset-password/:id" element={<ResetPassword />} />
+              
 
               <Route path="*" element={<NotFound />} />
             </Routes>

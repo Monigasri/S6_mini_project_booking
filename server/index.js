@@ -1,4 +1,4 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
@@ -8,6 +8,11 @@ import appointmentRoutes from "./routes/appointments.js";
 import alumniRoutes from "./routes/alumni.js";
 import userRoutes from "./routes/users.js";
 import studentRoutes from "./routes/student.js";
+import messageRoutes from "./routes/messages.js";
+import "./utils/reminderJob.js";
+
+// Always load the root .env (regardless of the current working directory).
+dotenv.config({ path: new URL("../.env", import.meta.url) });
 
 const app = express();
 
@@ -34,6 +39,7 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/alumni", alumniRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/student", studentRoutes);
+app.use("/api/messages", messageRoutes);
 
 
 // Connect to MongoDB, then start the server.

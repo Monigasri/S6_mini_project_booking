@@ -31,6 +31,9 @@ export default function AlumniDetailPage() {
 
   const [confirmSlot, setConfirmSlot] = useState<Slot | null>(null);
 
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageText, setMessageText] = useState("");
+
   // ================= LOAD DATA FROM BACKEND =================
   const loadData = async () => {
     if (!id) return;
@@ -87,12 +90,35 @@ export default function AlumniDetailPage() {
     }, 1800);
   };
 
-  // Placeholder for messaging feature (can be connected later)
   const handleSendMessage = () => {
-    toast.info("Direct messaging is coming soon", {
-      description: "You will be able to send a custom request directly to the mentor.",
-    });
-    // In future: open chat modal or navigate to messages page
+    if (!user) {
+      toast.error("Please login first");
+      return;
+    }
+    if (user.role !== "student") {
+      toast.info("Only students can send messages to alumni.");
+      return;
+    }
+
+    setShowMessageModal(true);
+  };
+
+  const sendMessage = async () => {
+    if (!user || user.role !== "student" || !id) return;
+    if (!messageText.trim()) {
+      toast.error("Please type a message");
+      return;
+    }
+
+    const result = await api.sendMessageToAlumni(id, messageText.trim());
+    if (!result.ok) {
+      toast.error(result.error || "Failed to send message");
+      return;
+    }
+
+    setShowMessageModal(false);
+    setMessageText("");
+    toast.success("Message sent!");
   };
 
   if (loading) {
@@ -177,6 +203,20 @@ export default function AlumniDetailPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+
+                    {alumni.email && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full text-green-800 text-sm font-medium">
+                         <Mail className="h-4 w-4" />
+                         {alumni.email}
+                       </div>
+                    )}
+
+                    {alumni.phone && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full text-green-800 text-sm font-medium">
+                        📞 {alumni.phone}
+                      </div>
+                    )}
+
                     {alumni.company && (
                       <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full text-blue-800 text-sm font-medium">
                         <Building className="h-4 w-4" />
@@ -378,6 +418,52 @@ export default function AlumniDetailPage() {
                   Confirm Booking
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Modal */}
+      {showMessageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <h3 className="text-2xl font-bold text-slate-900">Send Message</h3>
+              <button
+                type="button"
+                onClick={() => setShowMessageModal(false)}
+                className="text-slate-500 hover:text-slate-700 text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-600 mb-4">
+              Message <strong>{alumni?.name || "alumni"}</strong> to discuss session details.
+            </p>
+
+            <textarea
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              placeholder="Write your message..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 min-h-[120px]"
+            />
+
+            <div className="mt-5 grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setShowMessageModal(false)}
+                className="py-3 rounded-2xl border-2 border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={sendMessage}
+                className="py-3 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition shadow-sm"
+              >
+                Send
+              </button>
             </div>
           </div>
         </div>

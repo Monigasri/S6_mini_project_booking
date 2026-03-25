@@ -157,7 +157,7 @@ export default function ProfilePage() {
     { key: "college", label: "College / University", icon: <GraduationCap className="w-4 h-4" /> },
     { key: "degree", label: "Degree", icon: <GraduationCap className="w-4 h-4" /> },
     { key: "department", label: "Department", icon: <GraduationCap className="w-4 h-4" /> },
-    { key: "year", label: "Current Year", icon: <GraduationCap className="w-4 h-4" /> },
+    { key: "year", label: "Current Year",type: "select", options: ["1st", "2nd", "3rd", "4th", "Graduated"], icon: <GraduationCap className="w-4 h-4" /> },
     { key: "cgpa", label: "CGPA", type: "number", icon: <Pencil className="w-4 h-4" /> },
     { key: "graduationYear", label: "Graduation Year", type: "number", icon: <GraduationCap className="w-4 h-4" /> },
     { key: "skills", label: "Skills (comma separated)", type: "text", isArray: true, icon: <Pencil className="w-4 h-4" /> },
@@ -353,19 +353,34 @@ export default function ProfilePage() {
                           placeholder={`Enter your ${field.label.toLowerCase()}...`}
                         />
                       ) : (
-                        <input
-                          type={field.type || "text"}
-                          value={field.isArray && Array.isArray((form as any)[field.key]) 
-                            ? (form as any)[field.key].join(", ") 
-                            : (form as any)[field.key] || ""}
-                          onChange={e => setForm({ 
-                            ...form, 
-                            [field.key]: e.target.value
-                          })}
-                          className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-4 text-sm text-slate-700 focus:border-primary/30 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all outline-none disabled:opacity-50"
-                          disabled={field.disabled}
-                           placeholder={`Enter your ${field.label.toLowerCase()}...`}
-                        />
+                        field.type === "select" ? (
+  <select
+    value={(form as any)[field.key] || ""}
+    onChange={e => setForm({ ...form, [field.key]: e.target.value })}
+    className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-4 text-sm text-slate-700 focus:border-primary/30 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+  >
+    <option value="">Select {field.label}</option>
+    {field.options.map((opt: string) => (
+      <option key={opt} value={opt}>
+        {opt}
+      </option>
+    ))}
+  </select>
+) : (
+  <input
+    type={field.type || "text"}
+    value={field.isArray && Array.isArray((form as any)[field.key]) 
+      ? (form as any)[field.key].join(", ") 
+      : (form as any)[field.key] || ""}
+    onChange={e => setForm({ 
+      ...form, 
+      [field.key]: e.target.value
+    })}
+    className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-4 text-sm text-slate-700 focus:border-primary/30 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all outline-none disabled:opacity-50"
+    disabled={field.disabled}
+    placeholder={`Enter your ${field.label.toLowerCase()}...`}
+  />
+)
                       )
                     ) : (
                       <div className="group rounded-2xl bg-slate-50/70 p-4 text-sm font-medium text-slate-700 border border-slate-100/50 group-hover:bg-slate-100 transition-colors">

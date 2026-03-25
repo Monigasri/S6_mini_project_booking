@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, Slot } from "@/lib/api";
+import { api, Slot, Message } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -9,6 +9,7 @@ export default function HistoryPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [history, setHistory] = useState<Slot[]>([]);
+  const [messages, setMessages] = useState<(Message & { counterpartName?: string })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,17 +19,31 @@ export default function HistoryPage() {
       try {
         setLoading(true);
 
-        const result = await api.getHistory();
+        const [result, msgRes] = await Promise.all([api.getHistory(), api.getMessageHistory()]);
 
         if (result.ok) {
-          setHistory(result.appointments || []);
+          // ✅ SORT: NEW → OLD (date + time)
+          const sorted = (result.appointments || []).sort((a, b) => {
+            const dateA = new Date(`${a.date} ${a.time}`);
+            const dateB = new Date(`${b.date} ${b.time}`);
+            return dateB.getTime() - dateA.getTime();
+          });
+
+          setHistory(sorted);
         } else {
           console.error(result.error);
           setHistory([]);
         }
+
+        if (msgRes.ok) {
+          setMessages(msgRes.messages || []);
+        } else {
+          setMessages([]);
+        }
       } catch (err) {
         console.error("History load failed:", err);
         setHistory([]);
+        setMessages([]);
       } finally {
         setLoading(false);
       }
@@ -119,10 +134,54 @@ export default function HistoryPage() {
                       : "bg-gray-100 text-gray-800"
                   }`}
                 >
-                  {slot.status === "approved" ? "Accepted" : slot.status === "booked" ? "Waiting" : slot.status}
+                  {slot.status === "approved"
+                    ? "Accepted"
+                    : slot.status === "booked"
+                    ? "Waiting"
+                    : slot.status}
                 </span>
               </div>
             ))}
+          </div>
+        )}
+
+        {!loading && (
+          <div className="mt-10">
+            <h2 className="mb-4 text-2xl font-bold">Messages</h2>
+
+            {messages.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                No message history yet.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {messages.map((m) => {
+                  const isMine = user?.role === m.senderRole;
+                  return (
+                    <div
+                      key={m._id}
+                      className={`rounded-xl border bg-card p-4 shadow-sm ${
+                        isMine ? "border-indigo-200 bg-indigo-50" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="font-medium text-slate-800">
+                            {isMine ? "You" : m.counterpartName || "Contact"}
+                          </div>
+                          <div className="text-sm text-slate-600 whitespace-pre-wrap mt-1">
+                            {m.content}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-2">
+                        {m.createdAt ? new Date(m.createdAt).toLocaleString() : ""}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </main>
