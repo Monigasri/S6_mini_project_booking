@@ -11,7 +11,7 @@ import alumniRoutes from "./routes/alumni.js";
 import userRoutes from "./routes/users.js";
 import studentRoutes from "./routes/student.js";
 import messageRoutes from "./routes/messages.js";
-import "./utils/reminderJob.js";
+// import "./utils/reminderJob.js";
 
 // Always load the root `.env` (regardless of the current working directory).
 // In production (Render) you should rely on Render environment variables,
