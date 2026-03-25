@@ -205,7 +205,9 @@ router.post("/forgot-password", async (req, res) => {
       return res.json({ ok: true });
     }
 
-    const frontendBaseUrl = String(process.env.FRONTEND_URL || "http://localhost:8080").replace(
+    const frontendBaseUrl = String(
+      process.env.FRONTEND_URL || "https://s6-mini-project-booking.vercel.app"
+    ).replace(
       /\/$/,
       ""
     );

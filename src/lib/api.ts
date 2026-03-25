@@ -1,5 +1,17 @@
-// const BASE_URL = "http://localhost:3001/api";
-const BASE_URL = import.meta.env.VITE_API_URL;
+const rawApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+const DEFAULT_API_URL = "https://s6-mini-project-booking.onrender.com/api";
+
+function normalizeApiBase(url: string | undefined) {
+  const cleaned = (url || "").trim().replace(/\/$/, "");
+  if (!cleaned) return DEFAULT_API_URL;
+
+  // Frontend code calls `${BASE_URL}/<resource>`, while backend mounts under `/api`.
+  // If the env is set to just `https://host`, append `/api`.
+  if (!cleaned.toLowerCase().endsWith("/api")) return `${cleaned}/api`;
+  return cleaned;
+}
+
+const BASE_URL = normalizeApiBase(rawApiUrl);
 /* ================= TYPES ================= */
 
 export interface User {
@@ -113,7 +125,7 @@ export const api = {
   /* ================= forgrt password ================= */
   forgotPassword: async (email: string) => {
     try {
-      const res = await fetch("http://localhost:3001/api/auth/forgot-password", {
+      const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -126,6 +138,23 @@ export const api = {
       return { ok: res.ok, ...data };
     } catch (error) {
       return { ok: false, error: "Network error" };
+    }
+  },
+  /* ================= RESET PASSWORD ================= */
+  resetPassword: async (id: string, password: string) => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id, password }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, ...data };
+    } catch (error) {
+      return { ok: false, message: "Network error" };
     }
   },
   /* ================= ALUMNI LOGIN ================= */

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
 
 export default function ResetPassword() {
   const { id } = useParams();
@@ -10,26 +11,17 @@ export default function ResetPassword() {
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
+    const result = await api.resetPassword(id || "", password);
 
-    const res = await fetch("http://localhost:3001/api/auth/reset-password", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ id, password }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
+    if (result.ok) {
       setMessage("Password updated successfully!");
-      const nextRole = data?.role;
+      const nextRole = (result as any)?.role;
       setTimeout(() => {
         if (nextRole === "alumni") navigate("/alumni/login");
         else navigate("/student/login");
       }, 1500);
     } else {
-      setMessage(data.message || "Error resetting password");
+      setMessage((result as any)?.message || "Error resetting password");
     }
   };
 
